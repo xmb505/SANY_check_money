@@ -17,22 +17,35 @@ def load_mail_config():
     Returns:
         dict: 邮件配置参数
     """
-    config = configparser.ConfigParser()
-    config.read('mail_setting.ini', encoding='utf-8')
-    
-    # 处理收件人列表，去除空格
-    receivers = [r.strip() for r in config.get('smtp', 'receivers').split(',')]
-    
-    return {
-        'smtp_server': config.get('smtp', 'server'),
-        'smtp_port': config.getint('smtp', 'port'),
-        'username': config.get('smtp', 'username'),
-        'password': config.get('smtp', 'password'),
-        'sender': config.get('smtp', 'sender'),
-        'sender_name': config.get('smtp', 'sender_name', fallback='三一工学院水电费监控系统'),
-        'receivers': receivers,
-        'encryption': config.get('smtp', 'encryption', fallback='ssl')
-    }
+    try:
+        config = configparser.ConfigParser()
+        files_read = config.read('mail_setting.ini', encoding='utf-8')
+        if not files_read:
+            raise FileNotFoundError("无法读取 mail_setting.ini 配置文件，请检查文件是否存在且可访问")
+        
+        if 'smtp' not in config:
+            raise ValueError("配置文件中缺少 [smtp] 节点")
+        
+        # 处理收件人列表，去除空格
+        try:
+            receivers_raw = config.get('smtp', 'receivers')
+            receivers = [r.strip() for r in receivers_raw.split(',') if r.strip()]
+        except configparser.NoOptionError:
+            raise ValueError("配置文件中缺少 receivers 配置项")
+        
+        return {
+            'smtp_server': config.get('smtp', 'server'),
+            'smtp_port': config.getint('smtp', 'port'),
+            'username': config.get('smtp', 'username'),
+            'password': config.get('smtp', 'password'),
+            'sender': config.get('smtp', 'sender'),
+            'sender_name': config.get('smtp', 'sender_name', fallback='三一工学院水电费监控系统'),
+            'receivers': receivers,
+            'encryption': config.get('smtp', 'encryption', fallback='ssl')
+        }
+    except Exception as e:
+        print(f"加载邮件配置时发生错误: {e}")
+        raise
 
 def load_mail_template():
     """
@@ -41,8 +54,14 @@ def load_mail_template():
     Returns:
         str: 邮件模板内容
     """
-    with open('mail_texter.txt', 'r', encoding='utf-8') as f:
-        return f.read()
+    try:
+        with open('mail_texter.txt', 'r', encoding='utf-8') as f:
+            return f.read()
+    except FileNotFoundError:
+        raise FileNotFoundError("无法找到邮件模板文件 mail_texter.txt，请检查文件是否存在")
+    except Exception as e:
+        print(f"加载邮件模板时发生错误: {e}")
+        raise
 
 def call_login_script(phone_num, password):
     """
