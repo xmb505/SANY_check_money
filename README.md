@@ -14,6 +14,7 @@
 - **模块化设计**：支持命令行调用，返回标准JSON格式数据
 - **邮件预警**：当水电费余额低于阈值时自动发送邮件提醒
 - **后台监控**：通过 `monitor_daemon.py` 脚本实现周期性自动监控
+- **灵活配置**：支持通过配置文件自定义邮件和监控参数
 - **易于集成**：脚本设计便于集成到其他自动化系统
 
 ## 技术特点
@@ -67,12 +68,25 @@ python3 get_data.py <appUserId> <roleId>
 
 ### mail_setting.ini
 邮件发送配置文件，包含SMTP服务器设置、用户名、密码等信息。
+- `server`: SMTP服务器地址
+- `port`: SMTP服务器端口 (465用于SSL, 587用于TLS)
+- `username`: 发送邮件的用户名
+- `password`: 发送邮件的密码或应用专用密码
+- `sender`: 发件人邮箱地址
+- `sender_name`: 发件人显示名称
+- `receivers`: 收件人邮箱地址 (多个邮箱请用逗号分隔)
+- `encryption`: 邮件加密方式 (ssl/tls)
 
 ### monitor_config.ini
 数据监控配置文件，包含检查周期、预警阈值等参数。
+- `check_round`: 检查周期，单位为秒
+- `ele_keyword`: 电表关键字，用于识别电表数据
+- `ele_num`: 电表余额警报阈值
+- `water_keyword`: 水表关键字，用于识别水表数据
+- `water_num`: 水表余额警报阈值
 
 ### mail_texter.txt
-邮件模板文件，可自定义邮件内容格式。
+邮件模板文件，可自定义邮件内容格式。支持使用{{DATA_SECTION}}占位符来插入水电费数据。
 
 ## 依赖项
 
@@ -81,6 +95,10 @@ python3 get_data.py <appUserId> <roleId>
 - `hashlib` 库用于MD5加密
 - `smtplib` 和 `email` 库用于邮件发送
 - `configparser` 库用于配置文件解析
+- `subprocess` 库用于脚本间调用
+- `json` 库用于数据处理
+- `time` 库用于时间处理
+- `sys` 库用于系统操作
 
 ## 注意事项
 
