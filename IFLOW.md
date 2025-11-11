@@ -10,6 +10,7 @@
 4. **模块化设计**：脚本支持命令行调用，并返回JSON格式数据，便于其他模块集成和扩展
 5. **邮件预警功能**：当水电费余额低于阈值时，自动发送邮件提醒用户
 6. **后台监控功能**：通过`monitor_daemon.py`脚本实现周期性自动监控水电费余额
+7. **Aoksend邮件服务集成**：新增基于Aoksend邮件API的邮件发送功能，提供更灵活的邮件发送选项
 
 ## 核心功能模块
 
@@ -31,19 +32,36 @@
 ### 3. 邮件预警模块
 
 - 监控水电费余额，当低于预设阈值时自动发送邮件提醒
-- 使用`mail_sender.py`脚本处理邮件发送逻辑
+- 使用`mail_sender.py`脚本处理邮件发送逻辑（基于SMTP协议）
 - 使用`mail_setting.ini`配置邮件发送参数
 - 使用`mail_texter.txt`定义邮件模板格式
 - 使用`monitor_config.ini`配置监控参数
 - 支持多设备监控（电表和水表）
 
-### 4. 后台监控模块 (`monitor_daemon.py`)
+### 4. Aoksend邮件服务模块
+
+- 基于Aoksend邮件API的邮件发送功能
+- 提供命令行工具`aoksend-api-cli.py`用于测试和调试
+- 支持配置文件`config/aoksender.ini`管理API参数
+- 支持模板数据和附件发送
+- 提供更灵活的邮件发送选项
+
+### 5. 后台监控模块 (`monitor_daemon.py`)
 
 - 按照配置周期持续监控水电费余额
 - 使用`monitor_config.ini`配置检查周期和预警阈值
 - 当检测到余额低于阈值时，自动调用`mail_sender.py`发送预警邮件
 - 支持命令行调用：`./monitor_daemon.py <账号> <密码>`
 - 实现无人值守的自动化监控功能
+
+### 6. Aoksend后台监控模块 (`monitor_aoksender.py`)
+
+- 按照配置周期持续监控水电费余额
+- 使用`config/aoksender.ini`配置检查周期和预警阈值
+- 当检测到余额低于阈值时，自动调用Aoksend API发送预警邮件
+- 支持命令行调用：`./monitor_aoksender.py <账号> <密码>`
+- 实现无人值守的自动化监控功能
+- 逐个设备检查并发送邮件，确保每封邮件只包含单个设备的信息
 
 ## 核心技术实现
 
@@ -73,14 +91,18 @@
 
 - `login.py`：用户登录脚本，接收手机号和密码作为参数，返回登录结果（包含appUserId和roleId）
 - `get_data.py`：水电费数据查询脚本，接收appUserId和roleId作为参数，返回水电费详细信息
-- `mail_sender.py`：邮件发送脚本，接收账号和密码参数，自动获取数据并发送邮件
-- `monitor_daemon.py`：后台监控脚本，周期性检查水电费余额并在低于阈值时发送预警邮件
-- `mail_setting.ini`：邮件发送配置文件
-- `monitor_config.ini`：数据监控配置文件
-- `mail_texter.txt`：邮件模板文件
+- `mail_sender.py`：邮件发送脚本（基于SMTP协议），接收账号和密码参数，自动获取数据并发送邮件
+- `monitor_daemon.py`：后台监控脚本（基于SMTP协议），周期性检查水电费余额并在低于阈值时发送预警邮件
+- `aoksend-api-cli.py`：Aoksend邮件API命令行工具，用于测试和调试邮件发送功能
+- `monitor_aoksender.py`：后台监控脚本（基于Aoksend API），周期性检查水电费余额并在低于阈值时发送预警邮件
+- `mail_setting.ini`：SMTP邮件发送配置文件
+- `config/aoksender.ini`：Aoksend邮件API配置文件
+- `config/monitor_config.ini`：数据监控配置文件
+- `config/mail_texter.txt`：邮件模板文件
+- `config/example.txt`：使用示例文件
 - `README.md`：项目介绍和使用说明文档
 - `IFLOW.md`：项目开发过程和技术细节说明文档
-- `example.txt`：使用示例文件
+- `aoksend-api-cli.md`：Aoksend API CLI工具使用说明文档
 
 ## 使用方法示例
 
@@ -132,7 +154,7 @@ python3 get_data.py 12345 201
 }
 ```
 
-### 发送邮件通知
+### 发送邮件通知（SMTP方式）
 ```bash
 ./mail_sender.py <账号> <密码>
 ```
@@ -143,13 +165,26 @@ python3 get_data.py 12345 201
 3. 使用`mail_texter.txt`模板生成邮件内容
 4. 根据`mail_setting.ini`配置发送邮件
 
-### 后台监控服务
+### 发送邮件通知（Aoksend API方式）
+```bash
+python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to recipient@example.com
+```
+
+### 后台监控服务（SMTP方式）
 ```bash
 ./monitor_daemon.py <账号> <密码>
 ```
 
 该命令会启动后台监控服务，按照 `monitor_config.ini` 中配置的检查周期持续监控水电费余额，
 当余额低于设定阈值时自动发送邮件通知。
+
+### 后台监控服务（Aoksend API方式）
+```bash
+./monitor_aoksender.py <账号> <密码>
+```
+
+该命令会启动后台监控服务，按照 `config/aoksender.ini` 中配置的检查周期持续监控水电费余额，
+当余额低于设定阈值时自动通过Aoksend API发送邮件通知。
 
 ## 配置文件说明
 
@@ -161,7 +196,47 @@ python3 get_data.py 12345 201
 - 发件人和收件人信息
 - 邮件加密方式
 
-### monitor_config.ini
+### config/aoksender.ini
+Aoksend邮件API配置文件，包含：
+- API地址
+- API密钥
+- 模板ID
+- 收件人地址
+- 默认回复地址
+- 发件人名称
+- 邮件附件
+- 监控参数（检查周期、监控关键词、阈值）
+
+示例配置：
+```ini
+# 邮件发送配置
+[aoksender]
+# API地址(选填)
+server = 
+# API密钥
+app_key = your_app_key_here
+# 模板ID
+template_id = your_template_id_here
+# 收件人地址
+to = recipient@example.com
+# 默认回复地址
+reply_to = 
+# 发件人名称
+alias = 三一工学院水电费监控系统
+# 邮件附件, 仅专业版可用；发送附件时, 必须使用 multipart/form-data 进行 post 提交 (表单提交)
+attachment =
+
+# 水电费监控限制（这里不再区分水电费，而是直接对于json表里所有的设备直接遍历，谁低于设定值就出发邮件）
+[monitor]
+# 循环检测时间，单位为秒
+monitor_timer = 3600
+# JSON检测关键词条，这里词条对应的数据必须是数字，非数字会导致程序出错
+monitor_keyword = remainingBalance
+# 低于数值触发程序阈值
+monitor_start = 10
+```
+
+### config/monitor_config.ini
 数据监控配置文件，包含：
 - 检查周期（秒）
 - 电表和水表的关键字识别
@@ -194,6 +269,7 @@ water_num = 10
 - `smtplib` 和 `email` 库用于邮件发送（邮件预警功能）
 - `configparser` 库用于配置文件解析
 - `subprocess` 库用于脚本间调用
+- `argparse` 库用于命令行参数解析
 
 ## 项目特点和优势
 
@@ -204,7 +280,9 @@ water_num = 10
 5. **无会话依赖**：通过参数签名机制，无需维护复杂的会话状态
 6. **智能预警**：新增邮件预警功能，及时提醒用户充值
 7. **灵活配置**：支持通过配置文件自定义邮件和监控参数
-8. **后台监控**：支持无人值守的自动化监控功能
+8. **多种邮件发送方式**：支持传统的SMTP邮件发送和现代化的Aoksend API邮件发送
+9. **后台监控**：支持无人值守的自动化监控功能
+10. **精细化监控**：`monitor_aoksender.py`支持逐个设备检查，每封邮件只包含单个设备信息
 
 ## 后续扩展建议
 
@@ -214,6 +292,8 @@ water_num = 10
 4. **多用户支持**：扩展系统以支持多个用户的水电费监控
 5. **移动端应用**：开发移动端应用，方便用户随时查看水电费情况
 6. **数据可视化**：添加数据图表功能，展示历史使用趋势
+7. **多邮件服务支持**：扩展支持更多的邮件服务提供商
+8. **MySQL数据库集成**：由于脚本采用模块化设计，后期接入MySQL数据库存储用户数据、查询记录和历史趋势将非常便捷，可为每个功能模块创建相应的数据访问层(DAO)
 
 ## 技术难点和解决方案
 
@@ -241,3 +321,7 @@ water_num = 10
 ### 后台监控实现
 - **难点**：需要实现周期性检查并在满足条件时触发邮件发送
 - **解决方案**：使用`while True`循环配合`time.sleep()`实现周期性检查，通过配置文件控制检查周期
+
+### Aoksend API集成
+- **难点**：需要实现与第三方邮件服务API的集成
+- **解决方案**：创建独立的CLI工具和配置文件，通过API密钥和模板ID实现邮件发送功能
