@@ -19,9 +19,9 @@ def load_mail_config():
     """
     try:
         config = configparser.ConfigParser()
-        files_read = config.read('mail_setting.ini', encoding='utf-8')
+        files_read = config.read('config/mail_setting.ini', encoding='utf-8')
         if not files_read:
-            raise FileNotFoundError("无法读取 mail_setting.ini 配置文件，请检查文件是否存在且可访问")
+            raise FileNotFoundError("无法读取 config/mail_setting.ini 配置文件，请检查文件是否存在且可访问")
         
         if 'smtp' not in config:
             raise ValueError("配置文件中缺少 [smtp] 节点")
@@ -55,10 +55,10 @@ def load_mail_template():
         str: 邮件模板内容
     """
     try:
-        with open('mail_texter.txt', 'r', encoding='utf-8') as f:
+        with open('config/mail_texter.txt', 'r', encoding='utf-8') as f:
             return f.read()
     except FileNotFoundError:
-        raise FileNotFoundError("无法找到邮件模板文件 mail_texter.txt，请检查文件是否存在")
+        raise FileNotFoundError("无法找到邮件模板文件 config/mail_texter.txt，请检查文件是否存在")
     except Exception as e:
         print(f"加载邮件模板时发生错误: {e}")
         raise

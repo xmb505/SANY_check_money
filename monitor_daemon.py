@@ -15,7 +15,7 @@ def load_monitor_config():
         dict: 监控配置参数
     """
     config = configparser.ConfigParser()
-    config.read('monitor_config.ini', encoding='utf-8')
+    config.read('config/monitor_config.ini', encoding='utf-8')
     
     return {
         'check_round': config.getint('data', 'check_round'),
