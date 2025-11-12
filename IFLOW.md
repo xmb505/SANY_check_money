@@ -6,13 +6,17 @@
 
 1. **登录功能**：通过`login.py`脚本实现用户登录，并获取用户ID和角色ID等信息
 2. **数据查询**：通过`get_data.py`脚本查询用户的水电费使用情况和余额
-3. **签名验证**：实现了与目标网站（sywap.funsine.com）完全一致的签名算法，确保请求能够通过验证
-4. **模块化设计**：脚本支持命令行调用，并返回JSON格式数据，便于其他模块集成和扩展
-5. **邮件预警功能**：当水电费余额低于阈值时，自动发送邮件提醒用户
-6. **后台监控功能**：通过`monitor_daemon.py`脚本实现周期性自动监控水电费余额
-7. **Aoksend邮件服务集成**：新增基于Aoksend邮件API的邮件发送功能，提供更灵活的邮件发送选项
-8. **数据库存储功能**：新增MySQL数据库支持，可将查询到的数据持久化存储
-9. **数据去重功能**：自动检测并避免重复插入相同时间点的数据
+3. **分页数据查询**：通过`check_data.py`脚本支持分页查询设备数据
+4. **数据库存储功能**：通过`data2sql.py`脚本将查询到的数据存储到MySQL数据库
+5. **守护进程功能**：通过`daemon.sh`脚本实现周期性自动执行数据存储任务
+6. **签名验证**：实现了与目标网站（sywap.funsine.com）完全一致的签名算法，确保请求能够通过验证
+7. **模块化设计**：脚本支持命令行调用，并返回JSON格式数据，便于其他模块集成和扩展
+8. **数据去重功能**：自动检测并避免重复插入相同时间点的数据
+9. **异常数据识别**：能够识别并标记异常数据（如`currentDealDate`为null的记录）
+10. **数据库表结构导入**：通过`import.sql`文件快速创建项目所需的数据库表结构
+11. **邮件预警功能**：当水电费余额低于阈值时，自动发送邮件提醒用户
+12. **后台监控功能**：通过`monitor_daemon.py`脚本实现周期性自动监控水电费余额
+13. **Aoksend邮件服务集成**：新增基于Aoksend邮件API的邮件发送功能，提供更灵活的邮件发送选项
 
 ## 核心功能模块
 
@@ -49,7 +53,23 @@
 - `pageNum`一般设为1，`pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
 - 支持命令行调用：`./data2sql.py <appUserId> <roleId> [pageNum] [pageSize]`
 
-### 5. 邮件预警模块
+### 5. 守护进程模块 (`daemon.sh`)
+
+- 读取配置文件并执行命令的守护进程脚本
+- 支持配置文件`config/daemon.ini`设置执行间隔和命令
+- 无限循环执行指定的命令
+- 提供执行日志和错误处理
+- 支持通过Ctrl+C停止脚本
+
+### 6. 数据库表结构导入 (`import.sql`)
+
+- 快速创建项目所需的数据库表结构
+- 包含完整的`device`表和`data`表定义
+- 包含必要的索引和外键约束
+- 支持一键导入数据库表结构
+- 使用方法：`mysql -h [服务器地址] -u [用户名] -p < import.sql`
+
+### 7. 邮件预警模块
 
 - 监控水电费余额，当低于预设阈值时自动发送邮件提醒
 - 使用`mail_sender.py`脚本处理邮件发送逻辑（基于SMTP协议）
@@ -58,7 +78,7 @@
 - 使用`monitor_config.ini`配置监控参数
 - 支持多设备监控（电表和水表）
 
-### 6. Aoksend邮件服务模块
+### 8. Aoksend邮件服务模块
 
 - 基于Aoksend邮件API的邮件发送功能
 - 提供命令行工具`aoksend-api-cli.py`用于测试和调试
@@ -66,7 +86,7 @@
 - 支持模板数据和附件发送
 - 提供更灵活的邮件发送选项
 
-### 7. 后台监控模块 (`monitor_daemon.py`)
+### 9. 后台监控模块 (`monitor_daemon.py`)
 
 - 按照配置周期持续监控水电费余额
 - 使用`monitor_config.ini`配置检查周期和预警阈值
@@ -74,7 +94,7 @@
 - 支持命令行调用：`./monitor_daemon.py <账号> <密码>`
 - 实现无人值守的自动化监控功能
 
-### 8. Aoksend后台监控模块 (`monitor_aoksender.py`)
+### 10. Aoksend后台监控模块 (`monitor_aoksender.py`)
 
 - 按照配置周期持续监控水电费余额
 - 使用`config/aoksender.ini`配置检查周期和预警阈值
@@ -147,12 +167,15 @@
 - `get_data.py`：水电费数据查询脚本，接收appUserId和roleId作为参数，返回水电费详细信息
 - `check_data.py`：分页设备数据查询脚本，支持pageNum和pageSize参数
 - `data2sql.py`：数据存储脚本，将查询到的数据存储到MySQL数据库
+- `daemon.sh`：守护进程脚本，根据配置文件重复执行命令
+- `import.sql`：数据库表结构导入文件，用于快速创建项目所需的数据库表结构
 - `mail_sender.py`：邮件发送脚本（基于SMTP协议），接收账号和密码参数，自动获取数据并发送邮件
 - `monitor_daemon.py`：后台监控脚本（基于SMTP协议），周期性检查水电费余额并在低于阈值时发送预警邮件
 - `aoksend-api-cli.py`：Aoksend邮件API命令行工具，用于测试和调试邮件发送功能
 - `monitor_aoksender.py`：后台监控脚本（基于Aoksend API），周期性检查水电费余额并在低于阈值时发送预警邮件
 - `mail_setting.ini`：SMTP邮件发送配置文件
 - `config/aoksender.ini`：Aoksend邮件API配置文件
+- `config/daemon.ini`：守护进程配置文件
 - `config/monitor_config.ini`：数据监控配置文件
 - `config/mail_texter.txt`：邮件模板文件
 - `config/example.txt`：使用示例文件
@@ -245,6 +268,13 @@ python3 get_data.py 12345 201
 }
 ```
 
+### 导入数据库表结构
+```bash
+mysql -h [服务器地址] -u [用户名] -p < import.sql
+```
+
+该命令会创建项目所需的数据库和表结构，包括device表和data表。
+
 ### 存储数据到数据库
 ```bash
 ./data2sql.py 20241231000020 201 1 100
@@ -257,6 +287,17 @@ python3 get_data.py 12345 201
 4. 将读数数据存储到`data`表
 5. 自动去重，避免重复插入相同时间点的数据
 6. 识别并标记异常数据（如`currentDealDate`为null的记录）
+
+### 守护进程运行
+```bash
+./daemon.sh
+```
+
+该命令会：
+1. 读取`config/daemon.ini`配置文件
+2. 根据配置的`rec_time`参数设置重复执行间隔
+3. 执行配置的`command`命令
+4. 无限循环执行，每次执行后等待指定时间
 
 ### 发送邮件通知（SMTP方式）
 ```bash
@@ -318,11 +359,11 @@ Aoksend邮件API配置文件，包含：
 # API地址(选填)
 server = 
 # API密钥
-app_key = your_app_key_here
+app_key = 
 # 模板ID
-template_id = your_template_id_here
+template_id = 
 # 收件人地址
-to = recipient@example.com
+to = 
 # 默认回复地址
 reply_to = 
 # 发件人名称
@@ -338,6 +379,19 @@ monitor_timer = 3600
 monitor_keyword = remainingBalance
 # 低于数值触发程序阈值
 monitor_start = 10
+```
+
+### config/daemon.ini
+守护进程配置文件，包含：
+- 执行间隔时间
+- 需要执行的命令
+
+示例配置：
+```ini
+[daemon]
+# 重复时间，单位为秒
+rec_time = 3600
+command = './data2sql.py 20251112000004 201 1 5000'
 ```
 
 ### config/monitor_config.ini
@@ -367,17 +421,15 @@ MySQL数据库连接配置文件，包含：
 - 数据库服务器地址
 - 端口号
 - 登录用户名
-- 登录密码
 - 数据库名称
 
 示例配置：
 ```ini
 [mysql]
-mysql_server = your_mysql_host
+mysql_server = 
 mysql_port = 3306
-login_user = your_username
-login_passwd = your_password
-db_schema = your_database_name
+login_user = 
+db_schema = 
 ```
 
 ## 依赖项和环境要求
@@ -406,10 +458,12 @@ db_schema = your_database_name
 7. **灵活配置**：支持通过配置文件自定义邮件和监控参数
 8. **多种邮件发送方式**：支持传统的SMTP邮件发送和现代化的Aoksend API邮件发送
 9. **后台监控**：支持无人值守的自动化监控功能
-10. **精细化监控**：`monitor_aoksender.py`支持逐个设备检查，每封邮件只包含单个设备信息
+10. **精细化监控**：`monitor_aoksender.py`支持逐个设备检查，每封邮件只包含单个设备的信息
 11. **数据持久化**：支持将查询数据存储到MySQL数据库，便于历史数据分析
 12. **数据去重**：自动检测并避免重复插入相同时间点的数据
 13. **异常数据识别**：能够识别并标记异常数据，如`currentDealDate`为null的记录
+14. **快速部署**：通过`import.sql`文件快速创建数据库表结构
+15. **定时任务支持**：通过`daemon.sh`脚本实现周期性任务执行
 
 ## 后续扩展建议
 
@@ -469,3 +523,11 @@ db_schema = your_database_name
 ### 分页查询优化
 - **难点**：避免请求过大的数据量影响系统性能
 - **解决方案**：`pageNum`一般设为1，`pageSize`学校未设置限制，但建议合理使用，避免请求过大数据量
+
+### 数据库表结构导入
+- **难点**：为用户提供快速创建数据库表结构的方法
+- **解决方案**：创建`import.sql`文件，包含完整的数据库表结构定义，支持一键导入
+
+### 守护进程实现
+- **难点**：实现周期性自动执行任务的功能
+- **解决方案**：创建`daemon.sh`脚本，读取配置文件并无限循环执行指定命令

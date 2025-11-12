@@ -12,6 +12,7 @@
 - **数据查询**：通过 `get_data.py` 脚本获取水电费使用情况
 - **分页数据查询**：通过 `check_data.py` 脚本支持分页查询设备数据
 - **数据库存储**：通过 `data2sql.py` 脚本将查询数据存储到MySQL数据库
+- **守护进程**：通过 `daemon.sh` 脚本实现周期性自动执行任务
 - **签名算法**：实现了与学校网站完全一致的请求签名算法
 - **模块化设计**：支持命令行调用，返回标准JSON格式数据
 - **数据去重**：自动检测并避免重复插入相同时间点的数据
@@ -39,15 +40,18 @@
 - `get_data.py` - 水电费数据查询脚本，接收用户ID和角色ID作为参数，返回水电费信息
 - `check_data.py` - 分页设备数据查询脚本，支持pageNum和pageSize参数控制分页
 - `data2sql.py` - 数据库存储脚本，将查询到的数据存储到MySQL数据库，支持数据去重和异常数据识别
+- `daemon.sh` - 守护进程脚本，根据配置文件重复执行命令
 - `mail_sender.py` - 邮件发送脚本（基于SMTP协议），自动获取数据并发送邮件通知
 - `monitor_daemon.py` - 监控守护进程脚本（基于SMTP协议），按配置周期检查数据并发送预警邮件
 - `aoksend-api-cli.py` - Aoksend邮件API命令行工具（来自 https://github.com/xmb505/aoksend-api-cli ），用于测试和调试邮件发送功能
 - `monitor_aoksender.py` - 监控守护进程脚本（基于Aoksend API），按配置周期检查数据并发送预警邮件
 - `mail_setting.ini` - SMTP邮件发送配置文件
 - `config/aoksender.ini` - Aoksend邮件API配置文件
+- `config/daemon.ini` - 守护进程配置文件
 - `config/monitor_config.ini` - 数据监控配置文件（SMTP方式）
 - `config/mail_texter.txt` - 邮件模板文件
 - `config/mysql.ini` - MySQL数据库连接配置文件
+- `import.sql` - 数据库表结构导入文件，用于快速创建项目所需的数据库表结构
 - `IFLOW.md` - 项目开发过程和技术细节说明
 - `config/example.txt` - 使用示例文件
 
@@ -76,6 +80,22 @@ python3 get_data.py <appUserId> <roleId>
 ```
 - `pageNum`一般设为1
 - `pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
+
+### 守护进程运行
+```bash
+./daemon.sh
+```
+该命令会：
+1. 读取`config/daemon.ini`配置文件
+2. 根据配置的`rec_time`参数设置重复执行间隔
+3. 执行配置的`command`命令
+4. 无限循环执行，每次执行后等待指定时间
+
+### 导入数据库表结构
+```bash
+mysql -h [服务器地址] -u [用户名] -p < import.sql
+```
+该命令会创建项目所需的数据库和表结构，包括device表和data表。
 
 ### 发送邮件通知（SMTP方式）
 ```bash
@@ -159,8 +179,15 @@ MySQL数据库连接配置文件，包含数据库连接设置等信息。
 - `mysql_server`: MySQL服务器地址
 - `mysql_port`: MySQL服务器端口（默认3306）
 - `login_user`: 数据库登录用户名
-  `login_passwd`: 数据库密码
+- `login_passwd`: 数据库密码
 - `db_schema`: 数据库名称
+
+### config/daemon.ini
+守护进程配置文件，包含执行间隔时间和需要执行的命令。
+
+**daemon节:**
+- `rec_time`: 重复执行时间，单位为秒
+- `command`: 需要执行的命令
 
 ## 依赖项
 
@@ -186,6 +213,8 @@ MySQL数据库连接配置文件，包含数据库连接设置等信息。
 - 项目维护者不对因使用本脚本导致的任何后果承担责任
 - 使用邮件功能时，请确保配置文件中的SMTP设置正确
 - 使用数据库功能时，请确保已安装pymysql库
+- 使用import.sql文件时，请确保MySQL服务已启动并具有适当的权限
+- 使用daemon.sh脚本时，请确保配置文件中的命令正确且具有执行权限
 
 ## 贡献
 
