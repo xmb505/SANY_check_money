@@ -10,8 +10,12 @@
 
 - **自动登录**：通过 `login.py` 脚本实现用户自动登录
 - **数据查询**：通过 `get_data.py` 脚本获取水电费使用情况
+- **分页数据查询**：通过 `check_data.py` 脚本支持分页查询设备数据
+- **数据库存储**：通过 `data2sql.py` 脚本将查询数据存储到MySQL数据库
 - **签名算法**：实现了与学校网站完全一致的请求签名算法
 - **模块化设计**：支持命令行调用，返回标准JSON格式数据
+- **数据去重**：自动检测并避免重复插入相同时间点的数据
+- **异常数据识别**：能够识别并标记异常数据（如`currentDealDate`为null的记录）
 - **邮件预警**：当水电费余额低于阈值时自动发送邮件提醒
 - **后台监控**：通过 `monitor_daemon.py` 脚本实现周期性自动监控
 - **Aoksend邮件服务**：支持通过Aoksend API发送邮件，提供更灵活的邮件发送选项
@@ -27,19 +31,23 @@
 - 采用标准的HTTP请求和JSON数据格式
 - 支持多种邮件发送方式（SMTP和Aoksend API）
 - 支持灵活的邮件模板和配置
+- 支持MySQL数据库存储和查询历史数据
 
 ## 文件说明
 
 - `login.py` - 用户登录脚本，接收账号密码作为参数，返回登录结果
 - `get_data.py` - 水电费数据查询脚本，接收用户ID和角色ID作为参数，返回水电费信息
+- `check_data.py` - 分页设备数据查询脚本，支持pageNum和pageSize参数控制分页
+- `data2sql.py` - 数据库存储脚本，将查询到的数据存储到MySQL数据库，支持数据去重和异常数据识别
 - `mail_sender.py` - 邮件发送脚本（基于SMTP协议），自动获取数据并发送邮件通知
 - `monitor_daemon.py` - 监控守护进程脚本（基于SMTP协议），按配置周期检查数据并发送预警邮件
 - `aoksend-api-cli.py` - Aoksend邮件API命令行工具（来自 https://github.com/xmb505/aoksend-api-cli ），用于测试和调试邮件发送功能
 - `monitor_aoksender.py` - 监控守护进程脚本（基于Aoksend API），按配置周期检查数据并发送预警邮件
 - `mail_setting.ini` - SMTP邮件发送配置文件
 - `config/aoksender.ini` - Aoksend邮件API配置文件
-- `config/monitor_config.ini` - 数据监控配置文件
+- `config/monitor_config.ini` - 数据监控配置文件（SMTP方式）
 - `config/mail_texter.txt` - 邮件模板文件
+- `config/mysql.ini` - MySQL数据库连接配置文件
 - `IFLOW.md` - 项目开发过程和技术细节说明
 - `config/example.txt` - 使用示例文件
 
@@ -54,6 +62,20 @@ python3 login.py <phone_number> <password>
 ```bash
 python3 get_data.py <appUserId> <roleId>
 ```
+
+### 分页查询设备数据
+```bash
+./check_data.py <appUserId> <roleKey> [pageNum] [pageSize]
+```
+- `pageNum`一般设为1
+- `pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
+
+### 存储数据到数据库
+```bash
+./data2sql.py <appUserId> <roleId> [pageNum] [pageSize]
+```
+- `pageNum`一般设为1
+- `pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
 
 ### 发送邮件通知（SMTP方式）
 ```bash
@@ -89,6 +111,8 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 
 ### mail_setting.ini
 邮件发送配置文件（SMTP方式），包含SMTP服务器设置、用户名、密码等信息。
+
+**smtp节:**
 - `server`: SMTP服务器地址
 - `port`: SMTP服务器端口 (465用于SSL, 587用于TLS)
 - `username`: 发送邮件的用户名
@@ -100,6 +124,8 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 
 ### config/aoksender.ini
 邮件发送配置文件（Aoksend API方式），包含Aoksend邮件API设置、API密钥、模板ID等信息。
+
+**aoksender节:**
 - `server`: API地址（选填）
 - `app_key`: API密钥
 - `template_id`: 模板ID
@@ -107,12 +133,16 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 - `reply_to`: 默认回复地址
 - `alias`: 发件人名称
 - `attachment`: 邮件附件路径
+
+**monitor节:**
 - `monitor_timer`: 循环检测时间，单位为秒
 - `monitor_keyword`: JSON检测关键词，对应的数据必须是数字
 - `monitor_start`: 低于数值触发程序阈值
 
 ### config/monitor_config.ini
 数据监控配置文件（SMTP方式），包含检查周期、预警阈值等参数。
+
+**data节:**
 - `check_round`: 检查周期，单位为秒
 - `ele_keyword`: 电表关键字，用于识别电表数据
 - `ele_num`: 电表余额警报阈值
@@ -121,6 +151,16 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 
 ### config/mail_texter.txt
 邮件模板文件，可自定义邮件内容格式。支持使用{{DATA_SECTION}}占位符来插入水电费数据。
+
+### config/mysql.ini
+MySQL数据库连接配置文件，包含数据库连接设置等信息。
+
+**mysql节:**
+- `mysql_server`: MySQL服务器地址
+- `mysql_port`: MySQL服务器端口（默认3306）
+- `login_user`: 数据库登录用户名
+  `login_passwd`: 数据库密码
+- `db_schema`: 数据库名称
 
 ## 依赖项
 
@@ -134,14 +174,18 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 - `time` 库用于时间处理
 - `sys` 库用于系统操作
 - `argparse` 库用于命令行参数解析
+- `pymysql` 库用于MySQL数据库连接（需要安装pip）
+- `pip` 用于安装Python包（连接MySQL数据库需要）
 
 ## 注意事项
 
 - 本项目仅供学习和研究目的使用
 - 请遵守学校网站的使用条款和相关法律法规
 - 不建议在生产环境中频繁使用本脚本，可能对学校服务器造成压力
+- 使用分页查询时请合理设置pageSize，避免请求过大数据量
 - 项目维护者不对因使用本脚本导致的任何后果承担责任
 - 使用邮件功能时，请确保配置文件中的SMTP设置正确
+- 使用数据库功能时，请确保已安装pymysql库
 
 ## 贡献
 

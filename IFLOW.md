@@ -11,6 +11,8 @@
 5. **邮件预警功能**：当水电费余额低于阈值时，自动发送邮件提醒用户
 6. **后台监控功能**：通过`monitor_daemon.py`脚本实现周期性自动监控水电费余额
 7. **Aoksend邮件服务集成**：新增基于Aoksend邮件API的邮件发送功能，提供更灵活的邮件发送选项
+8. **数据库存储功能**：新增MySQL数据库支持，可将查询到的数据持久化存储
+9. **数据去重功能**：自动检测并避免重复插入相同时间点的数据
 
 ## 核心功能模块
 
@@ -29,7 +31,25 @@
 - 支持命令行调用：`python3 get_data.py <appUserId> <roleId>`
 - 返回JSON格式的水电费数据，包含房间信息、使用量、余额等详细信息
 
-### 3. 邮件预警模块
+### 3. 分页数据查询模块 (`check_data.py`)
+
+- 支持分页查询设备数据
+- 使用`appUserId`和`roleKey`参数查询设备信息
+- 支持`pageNum`和`pageSize`参数控制分页
+- `pageNum`一般设为1，`pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
+- 返回JSON格式的设备数据，包含设备ID、名称、状态、余额等信息
+- 支持命令行调用：`./check_data.py <appUserId> <roleKey> [pageNum] [pageSize]`
+
+### 4. 数据库存储模块 (`data2sql.py`)
+
+- 将查询到的设备数据存储到MySQL数据库
+- 自动创建和维护两个数据表：`device`（设备信息表）和`data`（读数数据表）
+- 支持数据去重，避免重复插入相同时间点的数据
+- 能够识别并标记异常数据（如`currentDealDate`为null的记录）
+- `pageNum`一般设为1，`pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
+- 支持命令行调用：`./data2sql.py <appUserId> <roleId> [pageNum] [pageSize]`
+
+### 5. 邮件预警模块
 
 - 监控水电费余额，当低于预设阈值时自动发送邮件提醒
 - 使用`mail_sender.py`脚本处理邮件发送逻辑（基于SMTP协议）
@@ -38,7 +58,7 @@
 - 使用`monitor_config.ini`配置监控参数
 - 支持多设备监控（电表和水表）
 
-### 4. Aoksend邮件服务模块
+### 6. Aoksend邮件服务模块
 
 - 基于Aoksend邮件API的邮件发送功能
 - 提供命令行工具`aoksend-api-cli.py`用于测试和调试
@@ -46,7 +66,7 @@
 - 支持模板数据和附件发送
 - 提供更灵活的邮件发送选项
 
-### 5. 后台监控模块 (`monitor_daemon.py`)
+### 7. 后台监控模块 (`monitor_daemon.py`)
 
 - 按照配置周期持续监控水电费余额
 - 使用`monitor_config.ini`配置检查周期和预警阈值
@@ -54,7 +74,7 @@
 - 支持命令行调用：`./monitor_daemon.py <账号> <密码>`
 - 实现无人值守的自动化监控功能
 
-### 6. Aoksend后台监控模块 (`monitor_aoksender.py`)
+### 8. Aoksend后台监控模块 (`monitor_aoksender.py`)
 
 - 按照配置周期持续监控水电费余额
 - 使用`config/aoksender.ini`配置检查周期和预警阈值
@@ -87,10 +107,46 @@
 - 关键参数包括：`appUserId`、`roleId`、`channelid`、`timestamp`、`sign`
 - 每次请求都需要重新生成签名，确保请求的有效性
 
+### 数据库设计
+
+#### device表（设备信息表）
+存储设备的基本信息，包括设备ID、名称、类型、状态等。
+
+字段说明：
+- `id`：设备ID，主键
+- `addr`：表地址编码
+- `equipmentName`：设备名称/位置描述
+- `installationSite`：物理安装点
+- `equipmentType`：设备类型（0=电表，1=水表）
+- `ratio`：互感器倍率
+- `rate`：单价（元/度或元/吨）
+- `acctId`：财务账户号
+- `status`：设备状态（0=停用，1=启用）
+- `properties`：扩展属性，JSON格式
+- `created_at`：首次入库时间
+- `updated_at`：档案变更时间
+
+#### data表（读数数据表）
+存储设备的读数数据，包括时间点、读数、余额等。
+
+字段说明：
+- `id`：自增主键
+- `device_id`：设备ID，外键关联device表
+- `read_time`：表底时间（currentDealDate）
+- `total_reading`：表底累积量
+- `diff_reading`：距上次用量（程序计算）
+- `remainingBalance`：余额（可为负值）
+- `equipmentStatus`：设备状态（1=开，0=关，NULL=未知）
+- `created_at`：本行写入时间
+- `remark`：异常备注
+- `unStandard`：非标准标记（0=标准，1=非标准）
+
 ## 项目文件说明
 
 - `login.py`：用户登录脚本，接收手机号和密码作为参数，返回登录结果（包含appUserId和roleId）
 - `get_data.py`：水电费数据查询脚本，接收appUserId和roleId作为参数，返回水电费详细信息
+- `check_data.py`：分页设备数据查询脚本，支持pageNum和pageSize参数
+- `data2sql.py`：数据存储脚本，将查询到的数据存储到MySQL数据库
 - `mail_sender.py`：邮件发送脚本（基于SMTP协议），接收账号和密码参数，自动获取数据并发送邮件
 - `monitor_daemon.py`：后台监控脚本（基于SMTP协议），周期性检查水电费余额并在低于阈值时发送预警邮件
 - `aoksend-api-cli.py`：Aoksend邮件API命令行工具，用于测试和调试邮件发送功能
@@ -100,6 +156,7 @@
 - `config/monitor_config.ini`：数据监控配置文件
 - `config/mail_texter.txt`：邮件模板文件
 - `config/example.txt`：使用示例文件
+- `config/mysql.ini`：MySQL数据库连接配置文件
 - `README.md`：项目介绍和使用说明文档
 - `IFLOW.md`：项目开发过程和技术细节说明文档
 - `aoksend-api-cli.md`：Aoksend API CLI工具使用说明文档
@@ -153,6 +210,53 @@ python3 get_data.py 12345 201
   "msg": "查询成功"
 }
 ```
+
+### 分页查询设备数据
+```bash
+./check_data.py 20241231000020 201 1 50
+```
+
+返回示例：
+```json
+{
+  "total": 4297,
+  "rows": [
+    {
+      "id": "24831",
+      "addr": "000000078445",
+      "equipmentName": "7栋6楼楼道中间大厅饮水机",
+      "installationSite": "7栋6楼楼道中间大厅",
+      "equipmentType": "0",
+      "ratio": "40",
+      "rate": "0.6190",
+      "remainingBalance": "-2619.789200",
+      "acctId": "20220805000452",
+      "equipmentStatus": "开",
+      "equipmentLatestLarge": null,
+      "equipmentCurrentLarge": "684.92",
+      "currentDealDate": "2025-11-12 10:05:46",
+      "status": "0",
+      "properties": null,
+      "deviceName": null
+    }
+  ],
+  "code": 200,
+  "msg": "查询成功"
+}
+```
+
+### 存储数据到数据库
+```bash
+./data2sql.py 20241231000020 201 1 100
+```
+
+该命令会自动：
+1. 调用`check_data.py`获取设备数据
+2. 连接MySQL数据库
+3. 将设备信息存储到`device`表
+4. 将读数数据存储到`data`表
+5. 自动去重，避免重复插入相同时间点的数据
+6. 识别并标记异常数据（如`currentDealDate`为null的记录）
 
 ### 发送邮件通知（SMTP方式）
 ```bash
@@ -258,6 +362,24 @@ water_keyword = 水表
 water_num = 10
 ```
 
+### config/mysql.ini
+MySQL数据库连接配置文件，包含：
+- 数据库服务器地址
+- 端口号
+- 登录用户名
+- 登录密码
+- 数据库名称
+
+示例配置：
+```ini
+[mysql]
+mysql_server = your_mysql_host
+mysql_port = 3306
+login_user = your_username
+login_passwd = your_password
+db_schema = your_database_name
+```
+
 ## 依赖项和环境要求
 
 - Python 3.x
@@ -270,6 +392,8 @@ water_num = 10
 - `configparser` 库用于配置文件解析
 - `subprocess` 库用于脚本间调用
 - `argparse` 库用于命令行参数解析
+- `pymysql` 库用于MySQL数据库连接（需要安装pip）
+- `pip` 用于安装Python包（连接MySQL数据库需要）
 
 ## 项目特点和优势
 
@@ -283,17 +407,20 @@ water_num = 10
 8. **多种邮件发送方式**：支持传统的SMTP邮件发送和现代化的Aoksend API邮件发送
 9. **后台监控**：支持无人值守的自动化监控功能
 10. **精细化监控**：`monitor_aoksender.py`支持逐个设备检查，每封邮件只包含单个设备信息
+11. **数据持久化**：支持将查询数据存储到MySQL数据库，便于历史数据分析
+12. **数据去重**：自动检测并避免重复插入相同时间点的数据
+13. **异常数据识别**：能够识别并标记异常数据，如`currentDealDate`为null的记录
 
 ## 后续扩展建议
 
-1. **数据存储**：将查询到的水电费数据存储到数据库，便于历史数据分析
-2. **Web界面**：开发Web界面，提供更友好的查询和展示方式
-3. **定时任务**：使用cron等工具设置定时任务，实现自动化查询和预警
-4. **多用户支持**：扩展系统以支持多个用户的水电费监控
-5. **移动端应用**：开发移动端应用，方便用户随时查看水电费情况
-6. **数据可视化**：添加数据图表功能，展示历史使用趋势
-7. **多邮件服务支持**：扩展支持更多的邮件服务提供商
-8. **MySQL数据库集成**：由于脚本采用模块化设计，后期接入MySQL数据库存储用户数据、查询记录和历史趋势将非常便捷，可为每个功能模块创建相应的数据访问层(DAO)
+1. **Web界面**：开发Web界面，提供更友好的查询和展示方式
+2. **定时任务**：使用cron等工具设置定时任务，实现自动化查询和预警
+3. **多用户支持**：扩展系统以支持多个用户的水电费监控
+4. **移动端应用**：开发移动端应用，方便用户随时查看水电费情况
+5. **数据可视化**：添加数据图表功能，展示历史使用趋势
+6. **多邮件服务支持**：扩展支持更多的邮件服务提供商
+7. **数据备份**：实现数据库定期备份功能，确保数据安全
+8. **性能优化**：优化数据库查询性能，支持更大规模的数据存储和查询
 
 ## 技术难点和解决方案
 
@@ -325,3 +452,20 @@ water_num = 10
 ### Aoksend API集成
 - **难点**：需要实现与第三方邮件服务API的集成
 - **解决方案**：创建独立的CLI工具和配置文件，通过API密钥和模板ID实现邮件发送功能
+
+### 数据库集成
+- **难点**：需要设计合理的数据库表结构并实现数据的高效存储和查询
+- **解决方案**：创建两个表分别存储设备信息和读数数据，通过外键关联，实现数据的高效存储和查询
+- **系统要求**：需要安装pip来连接MySQL数据库
+
+### 数据去重
+- **难点**：需要避免重复插入相同时间点的数据
+- **解决方案**：在插入数据前检查是否已存在相同的`device_id`和`read_time`组合，如果存在则跳过插入
+
+### 异常数据处理
+- **难点**：部分设备数据可能存在异常，如`currentDealDate`为null
+- **解决方案**：识别这些异常数据并标记为非标准，同时用当前时间替换null值以确保数据完整性
+
+### 分页查询优化
+- **难点**：避免请求过大的数据量影响系统性能
+- **解决方案**：`pageNum`一般设为1，`pageSize`学校未设置限制，但建议合理使用，避免请求过大数据量
