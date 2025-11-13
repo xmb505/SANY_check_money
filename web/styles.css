@@ -1,0 +1,586 @@
+/* 全局样式 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f5f5;
+    color: #333;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body.with-background {
+    background-color: rgba(245, 245, 245, 0.9); /* 默认背景色带透明度 */
+}
+
+/* 暗色主题 */
+body.dark-mode {
+    background-color: #1a1a1a;
+    color: #f0f0f0;
+}
+
+body.dark-mode .container {
+    background-color: #2d2d2d;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+body.dark-mode .header {
+    background-color: #333;
+    color: #f0f0f0;
+}
+
+body.dark-mode .tab {
+    background-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .tab.active {
+    background-color: #2196F3;
+}
+
+body.dark-mode #search-input {
+    background-color: #444;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode #search-btn {
+    background-color: #4CAF50;
+}
+
+body.dark-mode .tab-content {
+    background-color: #333;
+    color: #f0f0f0;
+}
+
+body.dark-mode .mode-btn {
+    background-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .mode-btn.active {
+    background-color: #2196F3;
+}
+
+body.dark-mode .main-content {
+    background-color: #333;
+}
+
+body.dark-mode .card {
+    background-color: #444;
+    border-color: #555;
+    color: #f0f0f0;
+}
+
+body.dark-mode .card-header {
+    border-bottom-color: #555;
+}
+
+body.dark-mode .card-type.electric {
+    background-color: #FFC107;
+    color: #333;
+}
+
+body.dark-mode .card-type.water {
+    background-color: #2196F3;
+    color: white;
+}
+
+body.dark-mode .card-info-item {
+    border-bottom-color: #555;
+}
+
+body.dark-mode .toggle-details-btn {
+    background-color: #4CAF50;
+}
+
+body.dark-mode .modal-content {
+    background-color: #333;
+    color: #f0f0f0;
+}
+
+body.dark-mode .detail-info-item {
+    border-bottom-color: #555;
+}
+
+body.dark-mode .data-table th {
+    background-color: #444;
+}
+
+body.dark-mode .data-table th,
+body.dark-mode .data-table td {
+    border-bottom-color: #555;
+}
+
+/* 暗色模式下的图表字体颜色 */
+body.dark-mode .chart-container {
+    color: #ffffff;
+}
+
+body.dark-mode .mini-chart {
+    color: #ffffff;
+}
+
+body.dark-mode .count-btn {
+    background-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .count-btn.active {
+    background-color: #2196F3;
+}
+
+body.dark-mode #custom-count-input {
+    background-color: #444;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode #set-custom-count {
+    background-color: #4CAF50;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* 顶部导航栏 */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #fff;
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+/* 选项卡 */
+.tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.tab {
+    padding: 10px 20px;
+    background-color: #e0e0e0;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.tab.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+/* 搜索框 */
+.search-container {
+    display: flex;
+    gap: 10px;
+}
+
+#search-input {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 250px;
+}
+
+#search-btn {
+    padding: 10px 20px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#search-btn:hover {
+    background-color: #45a049;
+}
+
+/* 选项卡内容 */
+.tab-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* 数据量选项 */
+.data-count-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.data-count-options label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.preset-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.count-btn {
+    padding: 8px 15px;
+    background-color: #e0e0e0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.count-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.count-btn:hover {
+    background-color: #d5d5d5;
+}
+
+.custom-input {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#custom-count-input {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    width: 120px;
+}
+
+#set-custom-count {
+    padding: 8px 15px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#set-custom-count:hover {
+    background-color: #45a049;
+}
+
+/* 模式按钮 */
+.mode-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.mode-btn {
+    padding: 10px 20px;
+    background-color: #e0e0e0;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.mode-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.mode-btn:hover {
+    background-color: #d5d5d5;
+}
+
+/* 主要内容区域 */
+.main-content {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+/* 卡片容器 */
+.cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* 卡片样式 */
+.card {
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    background-color: #fafafa;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2196F3;
+}
+
+.card-badges {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-type {
+    font-size: 14px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background-color: #e0e0e0;
+}
+
+.card-type.electric {
+    background-color: #FFC107;
+    color: #333;
+}
+
+.card-type.water {
+    background-color: #2196F3;
+    color: white;
+}
+
+/* 状态指示器 */
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.status-on {
+    background-color: #4CAF50; /* 绿色 */
+}
+
+.status-off {
+    background-color: #F44336; /* 红色 */
+}
+
+.card-info {
+    margin-bottom: 15px;
+}
+
+.card-info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.card-info-label {
+    font-weight: bold;
+}
+
+.card-data {
+    margin-top: 15px;
+    flex-grow: 1;
+}
+
+.card-data-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.card-data-label {
+    font-weight: bold;
+}
+
+.card-data-value {
+    font-family: 'Courier New', monospace;
+}
+
+.toggle-details-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: auto;
+    transition: background-color 0.3s;
+}
+
+.toggle-details-btn:hover {
+    background-color: #45a049;
+}
+
+.chart-container {
+    margin-top: 15px;
+    height: 150px;
+}
+
+.mini-chart {
+    width: 100% !important;
+    height: 100% !important;
+}
+
+/* 图表模态框 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 800px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.detail-modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+}
+
+#modal-title,
+#detail-modal-title {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#chart-canvas {
+    width: 100% !important;
+    height: 400px !important;
+}
+
+/* 详细信息样式 */
+.detail-info {
+    margin-bottom: 20px;
+}
+
+.detail-info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.detail-info-label {
+    font-weight: bold;
+    width: 120px;
+}
+
+.detail-data {
+    margin-top: 20px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+.data-table th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .search-container {
+        width: 100%;
+    }
+    
+    #search-input {
+        width: 100%;
+    }
+    
+    .cards-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .detail-info-item {
+        flex-direction: column;
+    }
+    
+    .detail-info-label {
+        width: auto;
+        margin-bottom: 5px;
+    }
+}

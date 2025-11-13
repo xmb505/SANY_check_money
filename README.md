@@ -43,7 +43,7 @@
 - `daemon.sh` - 守护进程脚本，根据配置文件重复执行命令
 - `mail_sender.py` - 邮件发送脚本（基于SMTP协议），自动获取数据并发送邮件通知
 - `monitor_daemon.py` - 监控守护进程脚本（基于SMTP协议），按配置周期检查数据并发送预警邮件
-- `aoksend-api-cli.py` - Aoksend邮件API命令行工具（来自 https://github.com/xmb505/aoksend-api-cli ），用于测试和调试邮件发送功能
+- `aoksend-api-cli.py` - Aoksend邮件API命令行工具（来自 https://github.com/your-username/aoksend-api-cli ），用于测试和调试邮件发送功能
 - `monitor_aoksender.py` - 监控守护进程脚本（基于Aoksend API），按配置周期检查数据并发送预警邮件
 - `mail_setting.ini` - SMTP邮件发送配置文件
 - `config/aoksender.ini` - Aoksend邮件API配置文件

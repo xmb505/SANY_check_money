@@ -11,7 +11,7 @@ from datetime import datetime
 def load_mysql_config():
     """加载MySQL配置"""
     config = configparser.ConfigParser()
-    config.read('./config/mysql.ini')
+    config.read('./config/mysql.ini', encoding='utf-8')
     
     return {
         'host': config.get('mysql', 'mysql_server'),

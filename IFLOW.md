@@ -188,7 +188,7 @@
 
 ### 登录获取用户信息
 ```bash
-python3 login.py 13800138000 password123
+python3 login.py your_phone_number your_password
 ```
 
 返回示例：
@@ -198,7 +198,7 @@ python3 login.py 13800138000 password123
   "code": 200,
   "user": {
     "appUserId": "12345",
-    "phoneNum": "13800138000",
+    "phoneNum": "your_phone_number",
     "password": "想看密码吗？没门",
     "roleId": 201,
     "roleWxPayChannel": "1"
