@@ -91,6 +91,18 @@ document.addEventListener('DOMContentLoaded', function() {
             // 初始化图表模态框
             initModal();
             
+            // 初始化数据量选择按钮
+            initDataCountButtons();
+            
+            // 初始化模式按钮
+            initModeButtons();
+            
+            // 初始化搜索功能
+            initSearch();
+            
+            // 初始化图表模态框
+            initModal();
+            
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
             cardsContainer.innerHTML = '<p>正在连接服务器，如果长时间没有反应，请联系管理员。</p>';
@@ -394,6 +406,10 @@ function updateActiveButton(count) {
 // 初始化模式按钮
 function initModeButtons() {
     const modeButtons = document.querySelectorAll('.mode-btn');
+    
+    // 根据当前模式设置激活按钮
+    updateModeButton();
+    
     modeButtons.forEach(button => {
         button.addEventListener('click', function() {
             // 移除所有模式按钮的激活状态
@@ -409,6 +425,23 @@ function initModeButtons() {
             renderAllCards();
         });
     });
+}
+
+// 更新模式按钮激活状态
+function updateModeButton() {
+    const modeButtons = document.querySelectorAll('.mode-btn');
+    
+    // 移除所有按钮的激活状态
+    modeButtons.forEach(btn => btn.classList.remove('active'));
+    
+    // 查找匹配的按钮并激活
+    const matchingButton = Array.from(modeButtons).find(btn => 
+        btn.getAttribute('data-mode') === currentMode
+    );
+    
+    if (matchingButton) {
+        matchingButton.classList.add('active');
+    }
 }
 
 // 初始化搜索功能
