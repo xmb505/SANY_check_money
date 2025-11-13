@@ -139,10 +139,12 @@ def get_first_screen_data():
         conn = get_db_connection()
         print("[INFO] 数据库连接建立成功")
         with conn.cursor() as cursor:
+            # 验证FIRST_SCREEN_COUNT是否在安全范围内
+            safe_limit = min(FIRST_SCREEN_COUNT, 100)  # 限制最大返回数量
             # 随机获取配置数量的设备ID
-            sql = f"SELECT id FROM device ORDER BY RAND() LIMIT {FIRST_SCREEN_COUNT}"
+            sql = "SELECT id FROM device ORDER BY RAND() LIMIT %s"
             print(f"[INFO] 执行SQL查询: {sql}")
-            cursor.execute(sql)
+            cursor.execute(sql, (safe_limit,))
             results = cursor.fetchall()
             device_ids = [str(row[0]) for row in results]
             print(f"[INFO] 查询完成，获取到 {len(device_ids)} 个设备ID")
@@ -304,7 +306,9 @@ def search_devices(keyword):
 # HTTP请求处理器
 class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        print(f"[INFO] 收到GET请求: {self.path}")
+        # 获取真实客户端IP
+        real_ip = self.headers.get('X-Real-IP') or self.headers.get('X-Forwarded-For') or self.client_address[0]
+        print(f"[INFO] 收到GET请求 from {real_ip}: {self.path}")
         response_data = {}
         try:
             # 解析URL和参数
@@ -326,8 +330,79 @@ class RequestHandler(BaseHTTPRequestHandler):
                 data_num = params.get('data_num', [5])[0]  # 默认5条数据
                 print(f"[INFO] 处理设备检查请求，设备ID: {device_id}, 数据量: {data_num}")
                 if device_id:
-                    # 验证device_id是否为有效格式
-                    if not isinstance(device_id, str) or len(device_id) > 50:
+                    # 验证device_id格式（允许字母、数字和下划线，限制长度）
+                    import re
+                    if not re.match(r'^[a-zA-Z0-9_]+
+            elif mode == 'search':
+                # 搜索设备
+                keyword = params.get('key_word', [None])[0]
+                print(f"[INFO] 处理搜索设备请求，关键词: {keyword}")
+                if keyword:
+                    # 验证keyword是否为有效格式，只允许字母、数字和中文
+                    import re
+                    if not isinstance(keyword, str) or len(keyword) > 50 or not re.match(r'^[a-zA-Z0-9\u4e00-\u9fa5\s]+
+            
+            print(f"[INFO] 请求处理完成，响应数据: {response_data.get('code', 'N/A')}")
+        except Exception as e:
+            print(f"[ERROR] 处理请求时出错: {str(e)}")
+            traceback.print_exc()
+            response_data = {"code": "500", "error": f"服务器内部错误: {str(e)}"}
+        finally:
+            # 设置响应头
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')  # 允许跨域
+            self.end_headers()
+            
+            # 发送响应
+            print(f"[INFO] 发送响应，响应长度: {len(json.dumps(response_data, ensure_ascii=False))}")
+            self.wfile.write(json.dumps(response_data, ensure_ascii=False).encode('utf-8'))
+            
+            # 确保数据发送完成并关闭连接
+            self.wfile.flush()
+            print("[INFO] 响应发送完成")
+
+# 启动服务器
+if __name__ == '__main__':
+    server = HTTPServer(('', SERVER_PORT), RequestHandler)
+    print(f"服务器启动，监听端口 {SERVER_PORT}")
+    server.serve_forever(), keyword):
+                        print(f"[WARN] 搜索关键词包含非法字符: {keyword}")
+                        response_data = {"code": "400", "error": "搜索关键词包含非法字符"}
+                    else:
+                        response_data = search_devices(keyword)
+                else:
+                    print("[WARN] 缺少key_word参数")
+                    response_data = {"code": "400", "error": "缺少key_word参数"}
+            else:
+                print(f"[WARN] 无效的mode参数: {mode}")
+                response_data = {"code": "400", "error": "无效的mode参数"}
+            
+            print(f"[INFO] 请求处理完成，响应数据: {response_data.get('code', 'N/A')}")
+        except Exception as e:
+            print(f"[ERROR] 处理请求时出错: {str(e)}")
+            traceback.print_exc()
+            response_data = {"code": "500", "error": f"服务器内部错误: {str(e)}"}
+        finally:
+            # 设置响应头
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')  # 允许跨域
+            self.end_headers()
+            
+            # 发送响应
+            print(f"[INFO] 发送响应，响应长度: {len(json.dumps(response_data, ensure_ascii=False))}")
+            self.wfile.write(json.dumps(response_data, ensure_ascii=False).encode('utf-8'))
+            
+            # 确保数据发送完成并关闭连接
+            self.wfile.flush()
+            print("[INFO] 响应发送完成")
+
+# 启动服务器
+if __name__ == '__main__':
+    server = HTTPServer(('', SERVER_PORT), RequestHandler)
+    print(f"服务器启动，监听端口 {SERVER_PORT}")
+    server.serve_forever(), device_id) or len(device_id) > 50:
                         print(f"[WARN] 无效的device_id参数: {device_id}")
                         response_data = {"code": "400", "error": "无效的device_id参数"}
                     else:
@@ -350,10 +425,37 @@ class RequestHandler(BaseHTTPRequestHandler):
                 keyword = params.get('key_word', [None])[0]
                 print(f"[INFO] 处理搜索设备请求，关键词: {keyword}")
                 if keyword:
-                    # 验证keyword是否为有效格式
-                    if not isinstance(keyword, str) or len(keyword) > 8:
-                        print(f"[WARN] 搜索关键词过长: {keyword}")
-                        response_data = {"code": "400", "error": "搜索关键词过长"}
+                    # 验证keyword是否为有效格式，只允许字母、数字和中文
+                    import re
+                    if not isinstance(keyword, str) or len(keyword) > 50 or not re.match(r'^[a-zA-Z0-9\u4e00-\u9fa5\s]+
+            
+            print(f"[INFO] 请求处理完成，响应数据: {response_data.get('code', 'N/A')}")
+        except Exception as e:
+            print(f"[ERROR] 处理请求时出错: {str(e)}")
+            traceback.print_exc()
+            response_data = {"code": "500", "error": f"服务器内部错误: {str(e)}"}
+        finally:
+            # 设置响应头
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Access-Control-Allow-Origin', '*')  # 允许跨域
+            self.end_headers()
+            
+            # 发送响应
+            print(f"[INFO] 发送响应，响应长度: {len(json.dumps(response_data, ensure_ascii=False))}")
+            self.wfile.write(json.dumps(response_data, ensure_ascii=False).encode('utf-8'))
+            
+            # 确保数据发送完成并关闭连接
+            self.wfile.flush()
+            print("[INFO] 响应发送完成")
+
+# 启动服务器
+if __name__ == '__main__':
+    server = HTTPServer(('', SERVER_PORT), RequestHandler)
+    print(f"服务器启动，监听端口 {SERVER_PORT}")
+    server.serve_forever(), keyword):
+                        print(f"[WARN] 搜索关键词包含非法字符: {keyword}")
+                        response_data = {"code": "400", "error": "搜索关键词包含非法字符"}
                     else:
                         response_data = search_devices(keyword)
                 else:
