@@ -2,7 +2,9 @@
 
 ## 项目概述
 
-这是一个用于自动查询三一工学院水电费信息的Python脚本项目，项目名为`your_database_name_money`。主要功能包括：
+这是一个用于自动查询三一工学院水电费信息的Python脚本项目，项目名为`your_database_name_money`。该项目通过模拟学校网站的登录和数据查询过程，实现了自动化的水电费信息获取功能，并支持邮件预警功能和Web可视化界面。
+
+主要功能包括：
 
 1. **登录功能**：通过`login.py`脚本实现用户登录，并获取用户ID和角色ID等信息
 2. **数据查询**：通过`get_data.py`脚本查询用户的水电费使用情况和余额
@@ -17,6 +19,8 @@
 11. **邮件预警功能**：当水电费余额低于阈值时，自动发送邮件提醒用户
 12. **后台监控功能**：通过`monitor_daemon.py`脚本实现周期性自动监控水电费余额
 13. **Aoksend邮件服务集成**：新增基于Aoksend邮件API的邮件发送功能，提供更灵活的邮件发送选项
+14. **Web可视化界面**：新增Web前端界面，提供数据可视化展示和交互式查询功能
+15. **RESTful API服务**：新增后端API服务，为Web界面提供数据支持
 
 ## 核心功能模块
 
@@ -103,6 +107,24 @@
 - 实现无人值守的自动化监控功能
 - 逐个设备检查并发送邮件，确保每封邮件只包含单个设备的信息
 
+### 11. Web可视化模块
+
+- 提供基于Web的图形化界面，用于展示水电费数据
+- 支持多种数据展示模式（用量模式、用钱模式、总量模式、余额模式）
+- 支持数据点数量自定义（5、10、20、50、100或自定义）
+- 支持设备搜索功能
+- 提供数据图表展示功能
+- 支持设备详细信息查看
+
+### 12. RESTful API服务模块 (`server/server.py`)
+
+- 提供后端API服务，为Web界面提供数据支持
+- 支持设备数据查询接口
+- 支持设备搜索接口
+- 支持数据统计接口
+- 使用MySQL数据库作为数据源
+- 支持配置化部署
+
 ## 核心技术实现
 
 ### 签名算法详解
@@ -183,6 +205,13 @@
 - `README.md`：项目介绍和使用说明文档
 - `IFLOW.md`：项目开发过程和技术细节说明文档
 - `aoksend-api-cli.md`：Aoksend API CLI工具使用说明文档
+- `server/server.py`：Web后端API服务
+- `server/server.ini`：API服务配置文件
+- `web/`：Web前端文件目录
+  - `index.html`：Web界面主页面
+  - `main.js`：Web界面主逻辑
+  - `styles.css`：Web界面样式
+  - `config.js`：Web界面配置文件
 
 ## 使用方法示例
 
@@ -331,6 +360,17 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 该命令会启动后台监控服务，按照 `config/aoksender.ini` 中配置的检查周期持续监控水电费余额，
 当余额低于设定阈值时自动通过Aoksend API发送邮件通知。
 
+### 启动Web服务
+```bash
+cd server
+python3 server.py
+```
+
+该命令会启动Web后端API服务，默认监听8080端口。
+
+### 访问Web界面
+在浏览器中打开 `http://localhost:8080` 即可访问Web界面。
+
 ## 配置文件说明
 
 ### mail_setting.ini
@@ -429,7 +469,69 @@ MySQL数据库连接配置文件，包含：
 mysql_server = 
 mysql_port = 3306
 login_user = 
+login_passwd = 
 db_schema = 
+```
+
+### server/server.ini
+Web后端API服务配置文件，包含：
+- 数据库连接信息
+- 服务器端口
+- 其他配置参数
+
+示例配置：
+```ini
+[mysql]
+mysql_server = your_mysql_host
+mysql_port = 3306
+login_user = your_username
+login_passwd = your_password
+db_schema = your_database_name
+
+[server]
+port = 8080
+
+[config]
+first_screen_count = 6
+```
+
+### web/config.js
+Web前端配置文件，包含：
+- API服务器地址和端口
+- 请求超时时间
+- 默认数据量和模式
+- 界面显示配置
+
+示例配置：
+```javascript
+const CONFIG = {
+    // API服务器地址和端口
+    API_BASE_URL: 'http://localhost:8080',
+    
+    // 请求超时时间(毫秒)
+    API_TIMEOUT: 5000,
+    
+    // 默认数据量
+    DEFAULT_DATA_COUNT: 5,
+    
+    // 默认数据模式
+    // usage: 用量模式 (新total_reading - 旧total_reading)
+    // cost: 用钱模式 (新remainingBalance - 旧remainingBalance)
+    // total: 总量模式 (直接用读表数据)
+    // balance: 余额模式 (直接显示remainingBalance)
+    DEFAULT_MODE: 'usage',
+    
+    // 背景图片配置
+    BACKGROUND_IMAGE_URL: 'https://s3.bmp.ovh/imgs/2025/06/24/a08d3969ca418f84.png',
+    BACKGROUND_IMAGE_OPACITY: 0.4,
+    BACKGROUND_BLUR_RADIUS: 10,
+    
+    // 容器透明度配置
+    CONTAINER_OPACITY: 0.8,
+    
+    // 网站favicon配置
+    FAVICON_URL: ''
+};
 ```
 
 ## 依赖项和环境要求
@@ -446,6 +548,7 @@ db_schema =
 - `argparse` 库用于命令行参数解析
 - `pymysql` 库用于MySQL数据库连接（需要安装pip）
 - `pip` 用于安装Python包（连接MySQL数据库需要）
+- `chart.js` 用于Web界面数据图表展示（通过CDN引入）
 
 ## 项目特点和优势
 
@@ -464,6 +567,10 @@ db_schema =
 13. **异常数据识别**：能够识别并标记异常数据，如`currentDealDate`为null的记录
 14. **快速部署**：通过`import.sql`文件快速创建数据库表结构
 15. **定时任务支持**：通过`daemon.sh`脚本实现周期性任务执行
+16. **Web可视化界面**：提供图形化界面，支持数据可视化展示
+17. **多模式数据展示**：支持用量、用钱、总量、余额等多种数据展示模式
+18. **交互式查询**：支持设备搜索和自定义数据点数量
+19. **数据图表展示**：通过图表直观展示数据变化趋势
 
 ## 后续扩展建议
 
@@ -475,6 +582,10 @@ db_schema =
 6. **多邮件服务支持**：扩展支持更多的邮件服务提供商
 7. **数据备份**：实现数据库定期备份功能，确保数据安全
 8. **性能优化**：优化数据库查询性能，支持更大规模的数据存储和查询
+9. **用户认证系统**：为Web界面添加用户认证功能
+10. **多语言支持**：为Web界面添加多语言支持
+11. **响应式设计**：优化Web界面在不同设备上的显示效果
+12. **数据导出功能**：添加数据导出为Excel或CSV格式的功能
 
 ## 技术难点和解决方案
 
@@ -531,3 +642,11 @@ db_schema =
 ### 守护进程实现
 - **难点**：实现周期性自动执行任务的功能
 - **解决方案**：创建`daemon.sh`脚本，读取配置文件并无限循环执行指定命令
+
+### Web界面开发
+- **难点**：需要实现响应式设计和数据可视化展示
+- **解决方案**：使用HTML、CSS和JavaScript开发前端界面，通过Chart.js实现数据图表展示
+
+### API服务开发
+- **难点**：需要实现高效的数据查询和处理
+- **解决方案**：使用Python的HTTPServer模块开发RESTful API，通过MySQL数据库提供数据支持

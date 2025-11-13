@@ -21,6 +21,8 @@
 - **后台监控**：通过 `monitor_daemon.py` 脚本实现周期性自动监控
 - **Aoksend邮件服务**：支持通过Aoksend API发送邮件，提供更灵活的邮件发送选项
 - **Aoksend后台监控**：通过 `monitor_aoksender.py` 脚本实现基于Aoksend API的周期性自动监控
+- **Web可视化界面**：提供基于Web的数据可视化展示界面
+- **RESTful API服务**：提供后端API服务，为Web界面提供数据支持
 - **灵活配置**：支持通过配置文件自定义邮件和监控参数
 - **易于集成**：脚本设计便于集成到其他自动化系统
 
@@ -33,6 +35,8 @@
 - 支持多种邮件发送方式（SMTP和Aoksend API）
 - 支持灵活的邮件模板和配置
 - 支持MySQL数据库存储和查询历史数据
+- 提供Web前端界面和后端API服务
+- 支持数据可视化展示和交互式查询
 
 ## 文件说明
 
@@ -54,6 +58,14 @@
 - `import.sql` - 数据库表结构导入文件，用于快速创建项目所需的数据库表结构
 - `IFLOW.md` - 项目开发过程和技术细节说明
 - `config/example.txt` - 使用示例文件
+- `server/` - Web后端API服务目录
+  - `server.py` - Web后端API服务主程序
+  - `server.ini` - API服务配置文件
+- `web/` - Web前端文件目录
+  - `index.html` - Web界面主页面
+  - `main.js` - Web界面主逻辑
+  - `styles.css` - Web界面样式
+  - `config.js` - Web界面配置文件
 
 ## 使用方法
 
@@ -127,6 +139,24 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 该命令会启动后台监控服务，按照 `config/aoksender.ini` 中配置的检查周期持续监控水电费余额，
 当余额低于设定阈值时自动通过Aoksend API发送邮件通知。
 
+### 启动Web服务
+```bash
+cd server
+python3 server.py
+```
+
+该命令会启动Web后端API服务，默认监听8080端口。
+
+### 访问Web界面
+在浏览器中打开 `http://localhost:8080` 即可访问Web界面。
+
+Web界面功能包括：
+- 数据可视化展示（支持用量、用钱、总量、余额等多种模式）
+- 数据点数量自定义（5、10、20、50、100或自定义）
+- 设备搜索功能
+- 数据图表展示
+- 设备详细信息查看
+
 ## 配置文件
 
 ### mail_setting.ini
@@ -189,6 +219,36 @@ MySQL数据库连接配置文件，包含数据库连接设置等信息。
 - `rec_time`: 重复执行时间，单位为秒
 - `command`: 需要执行的命令
 
+### server/server.ini
+Web后端API服务配置文件，包含数据库连接信息和服务器配置。
+
+**mysql节:**
+- `mysql_server`: MySQL服务器地址
+- `mysql_port`: MySQL服务器端口（默认3306）
+- `login_user`: 数据库登录用户名
+- `login_passwd`: 数据库密码
+- `db_schema`: 数据库名称
+
+**server节:**
+- `port`: API服务端口（默认8080）
+
+**config节:**
+- `first_screen_count`: 首屏显示设备数量
+
+### web/config.js
+Web前端配置文件，包含API服务器地址和界面显示配置。
+
+**配置项:**
+- `API_BASE_URL`: API服务器地址和端口
+- `API_TIMEOUT`: 请求超时时间(毫秒)
+- `DEFAULT_DATA_COUNT`: 默认数据点数量
+- `DEFAULT_MODE`: 默认数据展示模式（usage=用量模式, cost=用钱模式, total=总量模式, balance=余额模式）
+- `BACKGROUND_IMAGE_URL`: 背景图片URL
+- `BACKGROUND_IMAGE_OPACITY`: 背景图片透明度（0-1）
+- `BACKGROUND_BLUR_RADIUS`: 背景图片模糊半径
+- `CONTAINER_OPACITY`: 容器透明度（0-1）
+- `FAVICON_URL`: 网站favicon URL
+
 ## 依赖项
 
 - Python 3.x
@@ -203,6 +263,7 @@ MySQL数据库连接配置文件，包含数据库连接设置等信息。
 - `argparse` 库用于命令行参数解析
 - `pymysql` 库用于MySQL数据库连接（需要安装pip）
 - `pip` 用于安装Python包（连接MySQL数据库需要）
+- `chart.js` 用于Web界面数据图表展示（通过CDN引入）
 
 ## 注意事项
 
