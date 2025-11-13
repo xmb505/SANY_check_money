@@ -20,7 +20,11 @@
 12. **后台监控功能**：通过`monitor_daemon.py`脚本实现周期性自动监控水电费余额
 13. **Aoksend邮件服务集成**：新增基于Aoksend邮件API的邮件发送功能，提供更灵活的邮件发送选项
 14. **Web可视化界面**：新增Web前端界面，提供数据可视化展示和交互式查询功能
-15. **RESTful API服务**：新增后端API服务，为Web界面提供数据支持
+15. **高性能RESTful API服务**：新增后端API服务，为Web界面提供数据支持，支持连接池、线程池和输入验证
+16. **反向代理支持**：支持通过X-Real-IP和X-Forwarded-For头部获取真实客户端IP，适用于Nginx/Apache等反向代理环境
+17. **动态配置加载**：Web前端支持动态加载配置文件，避免浏览器缓存问题
+18. **响应式设计**：Web界面支持响应式布局，在不同设备上都能良好显示
+19. **文本溢出处理**：优化了设备名称过长时的显示效果，使用省略号代替换行
 
 ## 核心功能模块
 
@@ -115,8 +119,10 @@
 - 支持设备搜索功能
 - 提供数据图表展示功能
 - 支持设备详细信息查看
+- 支持响应式设计，在不同设备上都能良好显示
+- 优化了设备名称过长时的显示效果，使用省略号代替换行
 
-### 12. RESTful API服务模块 (`server/server.py`)
+### 12. 高性能RESTful API服务模块 (`server/server.py`)
 
 - 提供后端API服务，为Web界面提供数据支持
 - 支持设备数据查询接口
@@ -124,6 +130,16 @@
 - 支持数据统计接口
 - 使用MySQL数据库作为数据源
 - 支持配置化部署
+- **性能优化特性**：
+  - 实现了数据库连接池机制，减少连接建立开销
+  - 使用线程池并行处理多个请求
+  - 对查询参数进行输入验证，防止SQL注入
+  - 实现了高效的缓存机制
+  - 支持只读用户访问，提高安全性
+- **反向代理支持特性**：
+  - 支持通过X-Real-IP和X-Forwarded-For头部获取真实客户端IP
+  - 日志记录中显示真实客户端IP地址，便于分析请求来源
+  - 适用于Nginx、Apache等反向代理环境
 
 ## 核心技术实现
 
@@ -183,6 +199,23 @@
 - `remark`：异常备注
 - `unStandard`：非标准标记（0=标准，1=非标准）
 
+### 高性能API实现
+
+#### 数据库连接池机制
+- 创建固定大小的连接池（默认10个连接）
+- 复用数据库连接，减少连接建立和关闭的开销
+- 支持连接自动恢复机制
+
+#### 线程池并行处理
+- 使用线程池处理多个并发请求
+- 提高系统并发处理能力
+- 合理控制线程数量，避免资源耗尽
+
+#### 输入验证与安全
+- 对所有输入参数进行验证和过滤
+- 使用正则表达式验证参数格式
+- 防止SQL注入攻击
+
 ## 项目文件说明
 
 - `login.py`：用户登录脚本，接收手机号和密码作为参数，返回登录结果（包含appUserId和roleId）
@@ -205,13 +238,14 @@
 - `README.md`：项目介绍和使用说明文档
 - `IFLOW.md`：项目开发过程和技术细节说明文档
 - `aoksend-api-cli.md`：Aoksend API CLI工具使用说明文档
-- `server/server.py`：Web后端API服务
+- `server/server.py`：Web后端API服务（高性能版本，支持连接池和线程池）
 - `server/server.ini`：API服务配置文件
 - `web/`：Web前端文件目录
   - `index.html`：Web界面主页面
   - `main.js`：Web界面主逻辑
   - `styles.css`：Web界面样式
   - `config.js`：Web界面配置文件
+  - `chart.js`：图表库文件
 
 ## 使用方法示例
 
@@ -371,6 +405,17 @@ python3 server.py
 ### 访问Web界面
 在浏览器中打开 `http://localhost:8080` 即可访问Web界面。
 
+### 创建只读数据库用户
+为提高安全性，可以创建只读用户：
+```sql
+-- 创建只读用户
+CREATE USER 'your_database_name_viewer'@'%' IDENTIFIED BY 'secure_password';
+-- 授予只读权限
+GRANT SELECT ON your_database_name.* TO 'your_database_name_viewer'@'%';
+-- 刷新权限
+FLUSH PRIVILEGES;
+```
+
 ## 配置文件说明
 
 ### mail_setting.ini
@@ -399,11 +444,11 @@ Aoksend邮件API配置文件，包含：
 # API地址(选填)
 server = 
 # API密钥
-app_key = 
+app_key = YOUR_API_KEY_HERE
 # 模板ID
-template_id = 
+template_id = YOUR_TEMPLATE_ID_HERE
 # 收件人地址
-to = 
+to = your_email@example.com
 # 默认回复地址
 reply_to = 
 # 发件人名称
@@ -486,7 +531,7 @@ mysql_server = your_mysql_host
 mysql_port = 3306
 login_user = your_username
 login_passwd = your_password
-db_schema = your_database_name
+db_schema = your_database_name_money
 
 [server]
 port = 8080
@@ -504,33 +549,34 @@ Web前端配置文件，包含：
 
 示例配置：
 ```javascript
-const CONFIG = {
+// 配置文件 - 为动态加载设计
+window.DYNAMIC_CONFIG = {
     // API服务器地址和端口
-    API_BASE_URL: 'http://localhost:8080',
+    API_BASE_URL: 'https://check_api.your_mysql_host',
     
     // 请求超时时间(毫秒)
     API_TIMEOUT: 5000,
     
     // 默认数据量
-    DEFAULT_DATA_COUNT: 5,
+    DEFAULT_DATA_COUNT: 20,
     
     // 默认数据模式
     // usage: 用量模式 (新total_reading - 旧total_reading)
     // cost: 用钱模式 (新remainingBalance - 旧remainingBalance)
     // total: 总量模式 (直接用读表数据)
     // balance: 余额模式 (直接显示remainingBalance)
-    DEFAULT_MODE: 'usage',
+    DEFAULT_MODE: 'balance',
     
     // 背景图片配置
-    BACKGROUND_IMAGE_URL: 'https://s3.bmp.ovh/imgs/2025/06/24/a08d3969ca418f84.png',
-    BACKGROUND_IMAGE_OPACITY: 0.4,
-    BACKGROUND_BLUR_RADIUS: 10,
+    BACKGROUND_IMAGE_URL: 'https://s3.bmp.ovh/imgs/2025/06/24/a08d3969ca418f84.png',  // 背景图片URL，留空则不显示背景图片
+    BACKGROUND_IMAGE_OPACITY: 0.4,  // 背景图片透明度，范围0-1，0为完全透明，1为完全不透明
+    BACKGROUND_BLUR_RADIUS: 20,  // 背景图片模糊半径，单位px，0为不模糊
     
     // 容器透明度配置
-    CONTAINER_OPACITY: 0.8,
+    CONTAINER_OPACITY: 0.8,  // 容器透明度，范围0-1，0为完全不透明，1为完全透明
     
     // 网站favicon配置
-    FAVICON_URL: ''
+    FAVICON_URL: 'https://littleskin.cn/avatar/112989?size=128'  // favicon URL，留空则使用默认favicon
 };
 ```
 
@@ -549,6 +595,9 @@ const CONFIG = {
 - `pymysql` 库用于MySQL数据库连接（需要安装pip）
 - `pip` 用于安装Python包（连接MySQL数据库需要）
 - `chart.js` 用于Web界面数据图表展示（通过CDN引入）
+- `concurrent.futures` 用于线程池处理
+- `atexit` 用于程序退出时清理资源
+- `queue` 用于连接池管理
 
 ## 项目特点和优势
 
@@ -571,6 +620,13 @@ const CONFIG = {
 17. **多模式数据展示**：支持用量、用钱、总量、余额等多种数据展示模式
 18. **交互式查询**：支持设备搜索和自定义数据点数量
 19. **数据图表展示**：通过图表直观展示数据变化趋势
+20. **高性能API服务**：采用连接池和线程池技术，显著提升查询性能
+21. **安全防护**：支持只读用户访问，输入参数验证，防止SQL注入
+22. **可扩展性**：模块化设计便于功能扩展和维护
+23. **反向代理支持**：支持通过X-Real-IP和X-Forwarded-For头部获取真实客户端IP
+24. **动态配置加载**：Web前端支持动态加载配置文件，避免浏览器缓存问题
+25. **响应式设计**：Web界面支持响应式布局，在不同设备上都能良好显示
+26. **文本溢出处理**：优化了设备名称过长时的显示效果，使用省略号代替换行
 
 ## 后续扩展建议
 
@@ -586,6 +642,8 @@ const CONFIG = {
 10. **多语言支持**：为Web界面添加多语言支持
 11. **响应式设计**：优化Web界面在不同设备上的显示效果
 12. **数据导出功能**：添加数据导出为Excel或CSV格式的功能
+13. **API安全增强**：实现API访问频率限制和认证机制
+14. **实时数据推送**：使用WebSocket实现实时数据推送功能
 
 ## 技术难点和解决方案
 
@@ -650,3 +708,21 @@ const CONFIG = {
 ### API服务开发
 - **难点**：需要实现高效的数据查询和处理
 - **解决方案**：使用Python的HTTPServer模块开发RESTful API，通过MySQL数据库提供数据支持
+
+### 性能优化与安全
+- **难点**：API服务需要处理大量并发请求，同时确保安全性
+- **解决方案**：
+  - 实现数据库连接池减少连接开销
+  - 使用线程池处理并发请求
+  - 对所有输入参数进行验证和过滤
+  - 支持只读用户访问以提高安全性
+  - 使用参数化查询防止SQL注入
+  - 限制单次查询返回的数据量
+
+### 动态配置加载
+- **难点**：浏览器缓存导致配置文件更新不及时
+- **解决方案**：通过JavaScript动态加载配置文件，并在URL中添加时间戳避免缓存
+
+### 文本溢出处理
+- **难点**：设备名称过长导致界面显示问题
+- **解决方案**：使用CSS的`white-space: nowrap`、`overflow: hidden`和`text-overflow: ellipsis`属性处理文本溢出

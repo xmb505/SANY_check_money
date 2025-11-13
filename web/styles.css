@@ -353,12 +353,17 @@ body.dark-mode #set-custom-count {
     margin-bottom: 15px;
     padding-bottom: 10px;
     border-bottom: 1px solid #eee;
+    min-height: 24px;
 }
 
 .card-title {
     font-size: 18px;
     font-weight: bold;
     color: #2196F3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
 }
 
 .card-badges {

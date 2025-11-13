@@ -1,15 +1,19 @@
 // 全局变量
-let currentDataCount = CONFIG.DEFAULT_DATA_COUNT;
-let currentMode = CONFIG.DEFAULT_MODE;
+let CONFIG = {}; // 初始化为空对象，稍后动态加载
+let currentDataCount = 5; // 默认值
+let currentMode = 'usage'; // 默认值
 let currentDeviceIds = [];
 let deviceDataCache = {};
 
 // 带超时的fetch函数
 async function fetchWithTimeout(url, options = {}) {
+    // 使用默认超时时间5000毫秒，如果配置已加载则使用配置的值
+    const timeout = (CONFIG && CONFIG.API_TIMEOUT) ? CONFIG.API_TIMEOUT : 5000;
+    
     const timeoutId = setTimeout(() => {
         console.error(`请求超时: ${url}`);
         throw new Error(`请求超时: ${url}`);
-    }, CONFIG.API_TIMEOUT || 5000);
+    }, timeout);
 
     try {
         const response = await fetch(url, options);
@@ -21,44 +25,122 @@ async function fetchWithTimeout(url, options = {}) {
     }
 }
 
+// 动态加载配置文件，避免缓存
+function loadConfig() {
+    return new Promise((resolve, reject) => {
+        // 使用时间戳避免缓存
+        const timestamp = Date.now();
+        const script = document.createElement('script');
+        script.src = `config.js?_t=${timestamp}`;
+        
+        script.onload = () => {
+            // 确保DYNAMIC_CONFIG对象存在
+            if (window.DYNAMIC_CONFIG) {
+                CONFIG = window.DYNAMIC_CONFIG;
+                
+                // 设置默认值（如果配置中没有定义）
+                if (CONFIG.DEFAULT_DATA_COUNT === undefined) CONFIG.DEFAULT_DATA_COUNT = 5;
+                if (CONFIG.DEFAULT_MODE === undefined) CONFIG.DEFAULT_MODE = 'usage';
+                if (CONFIG.API_TIMEOUT === undefined) CONFIG.API_TIMEOUT = 5000;
+                if (CONFIG.API_BASE_URL === undefined) CONFIG.API_BASE_URL = 'http://localhost:8080';
+                
+                // 更新全局变量
+                currentDataCount = CONFIG.DEFAULT_DATA_COUNT;
+                currentMode = CONFIG.DEFAULT_MODE;
+                
+                resolve();
+            } else {
+                reject(new Error('配置文件加载失败'));
+            }
+        };
+        
+        script.onerror = () => {
+            reject(new Error('配置文件加载失败'));
+        };
+        
+        document.head.appendChild(script);
+    });
+}
+
 // 页面加载完成后初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 检查系统主题偏好
-    checkSystemTheme();
-    
-    // 设置背景图片
-    setBackgroudImage();
-    
-    // 设置favicon
-    setFavicon();
-    
-    // 初始化选项卡
-    initTabs();
-    
-    // 初始化数据量选择按钮
-    initDataCountButtons();
-    
-    // 初始化模式按钮
-    initModeButtons();
-    
-    // 初始化搜索功能
-    initSearch();
-    
-    // 初始化图表模态框
-    initModal();
-    
-    // 显示连接服务器提示
-    const cardsContainer = document.getElementById('cards-container');
-    cardsContainer.innerHTML = '<p>正在连接服务器，如果长时间没有反应，请联系管理员。</p>';
-    
-    // 加载首页数据
-    loadFirstScreenData();
+    // 首先加载配置
+    loadConfig()
+        .then(() => {
+            // 检查系统主题偏好
+            checkSystemTheme();
+            
+            // 设置背景图片
+            setBackgroudImage();
+            
+            // 设置favicon
+            setFavicon();
+            
+            // 初始化选项卡
+            initTabs();
+            
+            // 初始化数据量选择按钮
+            initDataCountButtons();
+            
+            // 初始化模式按钮
+            initModeButtons();
+            
+            // 初始化搜索功能
+            initSearch();
+            
+            // 初始化图表模态框
+            initModal();
+            
+            // 显示连接服务器提示
+            const cardsContainer = document.getElementById('cards-container');
+            cardsContainer.innerHTML = '<p>正在连接服务器，如果长时间没有反应，请联系管理员。</p>';
+            
+            // 加载首页数据
+            loadFirstScreenData();
+        })
+        .catch(error => {
+            console.error('配置加载失败:', error);
+            // 使用默认配置继续执行
+            currentDataCount = 5;
+            currentMode = 'usage';
+            
+            // 检查系统主题偏好
+            checkSystemTheme();
+            
+            // 设置背景图片
+            setBackgroudImage();
+            
+            // 设置favicon
+            setFavicon();
+            
+            // 初始化选项卡
+            initTabs();
+            
+            // 初始化数据量选择按钮
+            initDataCountButtons();
+            
+            // 初始化模式按钮
+            initModeButtons();
+            
+            // 初始化搜索功能
+            initSearch();
+            
+            // 初始化图表模态框
+            initModal();
+            
+            // 显示连接服务器提示
+            const cardsContainer = document.getElementById('cards-container');
+            cardsContainer.innerHTML = '<p>正在连接服务器，如果长时间没有反应，请联系管理员。</p>';
+            
+            // 加载首页数据
+            loadFirstScreenData();
+        });
 });
 
 // 设置favicon
 function setFavicon() {
     // 检查是否有配置favicon URL
-    if (CONFIG.FAVICON_URL) {
+    if (CONFIG && CONFIG.FAVICON_URL) {
         // 查找现有的favicon链接
         let favicon = document.querySelector('link[rel="icon"]');
         if (favicon) {
@@ -77,7 +159,7 @@ function setFavicon() {
 // 设置背景图片
 function setBackgroudImage() {
     // 检查是否有配置背景图片URL
-    if (CONFIG.BACKGROUND_IMAGE_URL) {
+    if (CONFIG && CONFIG.BACKGROUND_IMAGE_URL) {
         document.body.style.backgroundImage = `url('${CONFIG.BACKGROUND_IMAGE_URL}')`;
         document.body.style.backgroundSize = 'cover';
         document.body.style.backgroundPosition = 'center';
@@ -96,7 +178,9 @@ function setBackgroudImage() {
 function setContainerOpacity() {
     const container = document.querySelector('.container');
     if (container) {
-        const opacity = Math.max(0, Math.min(1, CONFIG.CONTAINER_OPACITY)); // 限制在0-1范围内
+        // 使用默认透明度0.8，如果配置已加载则使用配置的值
+        const opacity = CONFIG && CONFIG.CONTAINER_OPACITY !== undefined ? 
+            Math.max(0, Math.min(1, CONFIG.CONTAINER_OPACITY)) : 0.8;
         container.style.backgroundColor = `rgba(255, 255, 255, ${opacity})`;
         
         // 检查是否为暗色模式
@@ -127,7 +211,7 @@ function checkSystemTheme() {
                     document.body.classList.remove('dark-mode');
                 }
                 // 主题变化时更新背景透明度
-                if (CONFIG.BACKGROUND_IMAGE_URL) {
+                if (CONFIG && CONFIG.BACKGROUND_IMAGE_URL) {
                     updateBackgroundOpacity();
                 }
                 // 主题变化时更新容器透明度
@@ -138,8 +222,11 @@ function checkSystemTheme() {
 
 // 更新背景图片透明度（处理主题切换）
 function updateBackgroundOpacity() {
-    const opacity = Math.max(0, Math.min(1, CONFIG.BACKGROUND_IMAGE_OPACITY)); // 限制在0-1范围内
-    const blurRadius = Math.max(0, CONFIG.BACKGROUND_BLUR_RADIUS); // 确保模糊半径不为负数
+    // 使用默认值，如果配置已加载则使用配置的值
+    const opacity = CONFIG && CONFIG.BACKGROUND_IMAGE_OPACITY !== undefined ? 
+        Math.max(0, Math.min(1, CONFIG.BACKGROUND_IMAGE_OPACITY)) : 0.4;
+    const blurRadius = CONFIG && CONFIG.BACKGROUND_BLUR_RADIUS !== undefined ? 
+        Math.max(0, CONFIG.BACKGROUND_BLUR_RADIUS) : 10;
     
     // 移除现有的背景样式
     const existingStyles = document.querySelectorAll('style[data-bg-overlay]');
@@ -160,7 +247,7 @@ function updateBackgroundOpacity() {
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('${CONFIG.BACKGROUND_IMAGE_URL}');
+            background-image: url('${CONFIG && CONFIG.BACKGROUND_IMAGE_URL ? CONFIG.BACKGROUND_IMAGE_URL : ''}');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
@@ -194,7 +281,7 @@ function updateBackgroundOpacity() {
         
         body.dark-mode .container,
         body.dark-mode .header,
-        body.dark-mode .tab-content,
+        .tab-content,
         body.dark-mode .main-content,
         body.dark-mode .modal-content,
         body.dark-mode .card {
@@ -378,7 +465,9 @@ function initModal() {
 // 加载首页数据
 async function loadFirstScreenData() {
     try {
-        const response = await fetchWithTimeout(`${CONFIG.API_BASE_URL}/?mode=first_screen`);
+        // 使用默认API地址，如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
+        const response = await fetchWithTimeout(`${apiUrl}/?mode=first_screen`);
         const data = await response.json();
         
         if (data.code === "200") {
@@ -425,7 +514,9 @@ async function loadDeviceDataForIds(deviceIds, totalNum = deviceIds.length) {
 
 // 加载单个设备的数据
 async function loadDeviceData(deviceId) {
-    const response = await fetchWithTimeout(`${CONFIG.API_BASE_URL}/?mode=check&device_id=${deviceId}&data_num=${currentDataCount}`);
+    // 使用默认API地址，如果配置已加载则使用配置的地址
+    const apiUrl = CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
+    const response = await fetchWithTimeout(`${apiUrl}/?mode=check&device_id=${deviceId}&data_num=${currentDataCount}`);
     const data = await response.json();
     
     if (data.code === 200) {
@@ -943,7 +1034,9 @@ async function searchDevices(keyword) {
     }
     
     try {
-        const response = await fetchWithTimeout(`${CONFIG.API_BASE_URL}/?mode=search&key_word=${encodeURIComponent(keyword)}`);
+        // 使用默认API地址，如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
+        const response = await fetchWithTimeout(`${apiUrl}/?mode=search&key_word=${encodeURIComponent(keyword)}`);
         const data = await response.json();
         
         if (data.code === 418) {

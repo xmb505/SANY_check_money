@@ -23,6 +23,7 @@
 - **Aoksend后台监控**：通过 `monitor_aoksender.py` 脚本实现基于Aoksend API的周期性自动监控
 - **Web可视化界面**：提供基于Web的数据可视化展示界面
 - **RESTful API服务**：提供后端API服务，为Web界面提供数据支持
+- **反向代理支持**：支持通过X-Real-IP和X-Forwarded-For头部获取真实客户端IP，适用于Nginx/Apache等反向代理环境
 - **灵活配置**：支持通过配置文件自定义邮件和监控参数
 - **易于集成**：脚本设计便于集成到其他自动化系统
 
@@ -37,6 +38,7 @@
 - 支持MySQL数据库存储和查询历史数据
 - 提供Web前端界面和后端API服务
 - 支持数据可视化展示和交互式查询
+- 支持反向代理环境（Nginx/Apache），通过X-Real-IP/X-Forwarded-For获取真实客户端IP
 
 ## 文件说明
 
@@ -59,7 +61,7 @@
 - `IFLOW.md` - 项目开发过程和技术细节说明
 - `config/example.txt` - 使用示例文件
 - `server/` - Web后端API服务目录
-  - `server.py` - Web后端API服务主程序
+  - `server.py` - Web后端API服务主程序（支持高性能连接池、线程池、输入验证及反向代理IP获取）
   - `server.ini` - API服务配置文件
 - `web/` - Web前端文件目录
   - `index.html` - Web界面主页面
