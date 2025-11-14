@@ -29,6 +29,13 @@
 21. **返回首页按钮**：Web界面添加了返回首页按钮，方便用户从搜索结果返回首页
 22. **Aoksend余额查询服务**：新增独立的Aoksend余额查询服务，可查询API账户余额
 23. **邮件余额显示功能**：在Web界面页脚中实时显示剩余邮件数量，提升用户体验
+24. **邮件订阅庆祝功能**：新增在用户成功完成邮件订阅后发送庆祝邮件的功能
+25. **前端验证按钮优化**：修复了验证按钮在前端界面中的对齐问题，确保按钮居中显示
+26. **邮件订阅系统前端增强**：在订阅模态框中新增"直接输入订阅验证码"和"直接输入解绑验证码"按钮，方便用户在刷新页面后继续操作
+27. **订阅提醒优化**：在订阅模态框中添加了红色显眼的提示信息，提醒用户检查垃圾邮件文件夹
+28. **邮件检查服务**：新增`email_checker.py`服务，定期检查所有活跃订阅用户的设备余额，低于预警阈值时自动发送邮件
+29. **高性能数据库连接**：为邮件检查服务添加了连接池和线程池优化，提高查询性能
+30. **邮件发送频率限制**：在`email_api.py`中新增内存存储的邮件发送频率限制功能，防止邮件滥用，按日历日（过0点）计算发送次数
 
 ## 核心功能模块
 
@@ -127,6 +134,9 @@
 - 优化了设备名称过长时的显示效果，使用省略号代替换行
 - **新增：添加了返回首页按钮**，点击可清空搜索框并返回首页数据
 - **新增：邮件余额显示功能**，在页脚实时显示剩余邮件数量
+- **新增：订阅和解绑按钮增强**，在订阅按钮旁添加了"直接输入订阅验证码"和"直接输入解绑验证码"按钮
+- **新增：订阅提醒优化**，在订阅模态框中添加了红色显眼的提示信息，提醒用户检查垃圾邮件文件夹
+- **新增：验证按钮居中**，修复了验证按钮在前端界面中的对齐问题
 
 ### 12. 高性能RESTful API服务模块 (`server/server.py`)
 
@@ -163,6 +173,7 @@
     - 查找验证活跃的条目(验证码未过期且未验证)
     - 验证验证码是否正确
     - 更新验证状态
+    - **新增：验证码验证成功后发送庆祝邮件**
     - 返回验证结果
 
   - **解绑请求模式 (change_code)**：处理解绑请求
@@ -204,7 +215,8 @@
   - 解绑按钮为红色，位于订阅按钮右侧
   - 验证码验证界面
   - 成功/失败状态反馈
-  - 防止成功状态被后续错误信息覆盖的机制
+  - 防止成功状态被后续错误覆盖的机制
+  - **新增：添加"直接输入订阅验证码"和"直接输入解绑验证码"按钮**
 
 - **安全机制**：
   - 邮箱使用次数限制(默认25次)
@@ -212,6 +224,7 @@
   - 解绑请求24小时限制
   - 设备类型匹配验证
   - 邮箱格式验证
+  - **新增：邮件发送频率限制**，按日历日（过0点）计算，通过内存字典存储发送次数
   - 防止验证码被后续错误覆盖的安全机制
 
 ### 14. Aoksend余额查询服务模块 (`server/aokbalance_get.py`)
@@ -233,6 +246,51 @@
 - 提供错误处理机制，当API调用失败时显示"获取失败"
 - 使用JavaScript异步获取并显示数据
 - 支持亮色和暗色模式下的样式显示
+
+### 16. 邮件订阅庆祝功能模块 (`server/email_api.py`)
+
+- 在用户完成邮件订阅验证后发送庆祝邮件
+- **实现方式**：
+  - 从配置文件读取庆祝邮件模板ID和字段配置
+  - 获取设备最新数据（余额、读数、状态等）
+  - 构造庆祝邮件模板数据
+  - 使用Aoksend API发送包含设备信息的庆祝邮件
+- **配置项**：
+  - `new_celebrate_template_id`：庆祝邮件模板ID
+  - `new_celebrate_title`：标题字段名
+  - `new_celebrate_device_name`：设备名称字段名
+  - `new_celebrate_device_balance`：余额字段名
+  - `new_celebrate_device_check_time`：查询时间字段名
+  - `new_celebrate_device_statu`：设备状态字段名
+  - `new_celebrate_device_latest_read`：最后读数字段名
+
+### 17. 邮件检查服务模块 (`server/email_checker.py`)
+
+- **功能**：定期检查所有活跃订阅用户的设备余额，低于预警阈值时自动发送邮件
+- **实现方式**：
+  - 从email表中获取所有活跃的订阅
+  - 查询每个订阅设备的最新数据
+  - 比较余额与用户设置的预警阈值
+  - 当余额低于阈值时，通过Aoksend API发送预警邮件
+- **性能优化**：
+  - 实现了数据库连接池机制
+  - 使用线程池并发处理多个用户
+  - 支持批量处理，提高处理效率
+- **配置文件**：`server/email_checker.ini`
+- **命令行启动**：`./server/email_checker.py`
+
+### 18. 邮件发送频率限制功能 (`server/email_api.py`)
+
+- **功能**：防止邮件滥用，在内存中跟踪每个邮箱的每日发送次数
+- **实现方式**：
+  - 使用内存字典`daily_email_counts`格式为 `{email: {date: count}}` 存储发送次数
+  - 通过`count_emails_sent_today()`函数统计用户当天发送的邮件数量
+  - 通过`record_email_sent()`函数记录邮件发送
+  - 通过`cleanup_old_dates()`函数定期清理超过3天的旧数据
+  - 邮件发送前检查当日发送次数是否超过配置限制
+- **配置项**：
+  - `email_daily_limit`：每个邮箱每天最多发送邮件数量，超过此值拒绝发送邮件
+- **时间计算**：按日历日计算（过0点），使用系统时间的日期部分
 
 ## 配置文件处理方式更新
 
@@ -256,6 +314,7 @@
 - `server/server.ini`：Web后端API服务配置
 - `server/email_api.ini`：邮件订阅API配置
 - `server/aokbalance_get.ini`：Aoksend余额查询服务配置
+- `server/email_checker.ini`：邮件检查服务配置
 - `web/config.js`：Web前端配置
 
 ## 核心技术实现
@@ -353,6 +412,12 @@
 - 使用正则表达式验证参数格式
 - 防止SQL注入攻击
 
+#### 内存邮件频率限制机制
+- 使用内存字典存储每日邮件发送次数
+- 格式为 `{email: {date: count}}`
+- 每日发送次数按日历日（过0点）计算
+- 定期清理超过3天的旧数据以防止内存泄漏
+
 ## 项目文件说明
 
 - `login.py`：用户登录脚本，接收手机号和密码作为参数，返回登录结果（包含appUserId和roleId）
@@ -377,10 +442,12 @@
 - `aoksend-api-cli.md`：Aoksend API CLI工具使用说明文档
 - `server/server.py`：Web后端API服务（高性能版本，支持连接池和线程池）
 - `server/server.ini`：API服务配置文件
-- `server/email_api.py`：邮件订阅系统后端API（支持订阅、验证、解绑功能）
+- `server/email_api.py`：邮件订阅系统后端API（支持订阅、验证、解绑功能，新增邮件发送频率限制）
 - `server/email_api.ini`：邮件API服务配置文件
 - `server/aokbalance_get.py`：Aoksend余额查询服务
 - `server/aokbalance_get.ini`：Aoksend余额查询服务配置文件
+- `server/email_checker.py`：邮件检查服务（定期检查设备余额并发送预警邮件）
+- `server/email_checker.ini`：邮件检查服务配置文件
 - `web/`：Web前端文件目录
   - `index.html`：Web界面主页面
   - `main.js`：Web界面主逻辑
@@ -535,6 +602,14 @@ python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to rec
 该命令会启动后台监控服务，按照 `config/aoksender.ini` 中配置的检查周期持续监控水电费余额，
 当余额低于设定阈值时自动通过Aoksend API发送邮件通知。
 
+### 邮件检查服务
+```bash
+./server/email_checker.py
+```
+
+该命令会启动邮件检查服务，按照 `server/email_checker.ini` 中配置的检查周期持续监控所有活跃订阅用户的设备余额，
+当余额低于用户设定的阈值时自动通过Aoksend API发送预警邮件。
+
 ### 启动Web服务
 ```bash
 cd server
@@ -627,8 +702,10 @@ monitor_start = 10
 邮件订阅API服务配置文件，包含：
 - 服务器端口
 - 邮件限制次数
+- 邮件每日发送限制
 - 数据库连接信息
 - Aoksend邮件服务配置
+- **新增：注册庆祝邮件配置**
 
 示例配置：
 ```ini
@@ -638,13 +715,15 @@ port = 8081
 [email]
 # 表记录中同一个邮件最多出现次数，超过此值拒绝服务
 email_limit = 25
+# 每个邮箱每天最多发送邮件数量，超过此值拒绝发送邮件
+email_daily_limit = 100
 
 [mysql]
 mysql_server = your_mysql_host
 mysql_port = 3306
 login_user = your_username
 login_passwd = your_password
-db_schema = sany_check
+db_schema = your_database_name
 
 [aoksender]
 # API地址(选填)
@@ -667,8 +746,70 @@ verifi_email_statu = email_mode
 change_code = code
 # 模板中用户解绑操作的字段名
 change_email_statu = email_mode
-# 模板ID
+# 解绑模板ID
 change_template_id = YOUR_CHANGE_TEMPLATE_ID_HERE
+# 新注册庆祝模板ID，制定了发件用的模板
+new_celebrate_template_id = YOUR_CHANGE_TEMPLATE_ID_HERE
+# 新注册庆祝模板标题字段名，也就是邮件里面的大标题的变量，程序里面会写死："恭喜注册成功，现在是你邮箱绑定的设备情况"
+new_celebrate_title = title
+# 新注册庆祝模板设备字段名 直接拿着device_id去device表的id字段查，然后拿到equipmentName，发送邮件API的时候就是acctName:equipmentName
+new_celebrate_device_name = acctName
+# 新注册庆祝模板余额字段名，拿着device_id去data表的device_id字段查这个设备下read_time最新的设备的remainingBalance
+new_celebrate_device_balance = remainingBalance
+# 新注册庆祝模板上次查询时间字段名，拿着device_id去data表的device_id字段查这个设备下read_time最新的设备的read_time
+new_celebrate_device_check_time = currentDealDate
+# 新注册庆祝模板设备状态字段名，拿着device_id去data表的device_id字段查这个设备下read_time最新的设备的equipmentStatus
+new_celebrate_device_statu = equipmentStatus
+# 新注册庆祝模板最后读表示数字段名，拿着device_id去data表的device_id字段查这个设备下read_time最新的设备的total_reading
+new_celebrate_device_latest_read = equipmentLatestLarge
+```
+
+### server/email_checker.ini
+邮件检查服务配置文件，包含：
+- 检查周期设置
+- 数据库连接信息
+- Aoksend邮件服务配置
+
+示例配置：
+```ini
+[service]
+# 重新查询时间，单位为秒
+round_time = 3600
+
+[mysql]
+mysql_server = your_mysql_host
+mysql_port = 3306
+login_user = your_username
+login_passwd = your_password
+db_schema = sany_check
+
+[aoksender]
+# API地址(选填)
+server = https://www.aoksend.com/index/api/send_email
+# API密钥
+app_key = YOUR_API_KEY_HERE
+# 默认回复地址
+reply_to = 
+# 发件人名称
+alias = 新毛云
+# 邮件附件, 仅专业版可用；发送附件时, 必须使用 multipart/form-data 进行 post 提交 (表单提交)
+attachment =
+
+[email]
+# 查询模板ID
+checker_template_id = YOUR_TEMPLATE_ID_HERE
+# 查询模板标题字段名
+checker_title = title
+# 查询模板设备字段名
+checker_device_name = acctName
+# 查询模板余额字段名
+checker_device_balance = remainingBalance
+# 查询模板上次查询时间字段名
+checker_device_check_time = currentDealDate
+# 查询模板设备状态字段名
+checker_device_statu = equipmentStatus
+# 查询模板最后读表示数字段名
+checker_device_latest_read = equipmentLatestLarge
 ```
 
 ### server/aokbalance_get.ini
@@ -863,6 +1004,11 @@ window.DYNAMIC_CONFIG = {
 31. **返回首页功能**：在搜索后提供一键返回首页的按钮，提升用户体验
 32. **Aoksend余额查询服务**：提供独立的API余额查询服务
 33. **邮件余额显示功能**：在Web界面页脚实时显示剩余邮件数量，提升用户体验
+34. **邮件订阅庆祝功能**：在用户完成验证后发送庆祝邮件，提升用户体验
+35. **邮件检查服务**：独立运行的服务，检查所有活跃用户的设备余额并发送预警邮件
+36. **高性能处理**：为邮件检查服务添加连接池和线程池优化，提高批量处理效率
+37. **前端功能增强**：增加直接输入验证码按钮，优化订阅提醒信息，改进按钮对齐
+38. **邮件发送频率限制**：通过内存存储机制实现邮件发送频率限制，防止滥用，按日历日（过0点）计算发送次数
 
 ## 后续扩展建议
 
@@ -885,6 +1031,8 @@ window.DYNAMIC_CONFIG = {
 17. **数据分析功能**：增加使用趋势分析、预测等功能
 18. **API文档**：提供完整的API文档和SDK
 19. **邮件余额显示功能**：在前端页面实时显示剩余邮件数量，提升用户体验
+20. **邮件检查服务优化**：进一步优化邮件检查服务的性能和稳定性
+21. **邮件频率限制优化**：考虑使用更先进的滑动窗口算法或其他时间窗口策略
 
 ## 技术难点和解决方案
 
@@ -992,3 +1140,29 @@ window.DYNAMIC_CONFIG = {
   - 添加错误处理，当API请求失败时显示"获取失败"
   - 支持配置文件中的`EMAIL_BALANCE_API_URL`配置项
   - API返回格式为`{"message": "请求成功", "code": 200, "account": 24968}`
+
+### 邮件订阅庆祝功能实现
+- **难点**：需要在用户完成验证后发送包含设备信息的庆祝邮件
+- **解决方案**：
+  - 从配置文件读取庆祝邮件模板配置
+  - 获取设备最新数据（余额、读数、状态等）
+  - 使用Aoksend API发送个性化庆祝邮件
+  - 处理Decimal类型数据的JSON序列化问题
+  - 确保庆祝邮件在正确时机发送（注册验证成功后）
+
+### 邮件检查服务实现
+- **难点**：需要定期检查所有活跃用户的设备余额并发送预警邮件
+- **解决方案**：
+  - 实现数据库连接池和线程池优化性能
+  - 并发处理多个用户的预警检查
+  - 添加错误处理和资源管理机制
+  - 优化SQL查询性能，使用适当的索引
+
+### 邮件发送频率限制实现
+- **难点**：需要防止邮件滥用，同时避免数据库操作的性能开销
+- **解决方案**：
+  - 使用内存字典存储每日邮件发送次数，格式为`{email: {date: count}}`
+  - 实现`count_emails_sent_today()`和`record_email_sent()`函数
+  - 添加`cleanup_old_dates()`函数定期清理过期数据（保留最近3天）
+  - 按日历日（过0点）计算发送次数，而非24小时滚动窗口
+  - 在配置文件中添加`email_daily_limit`配置项控制每日发送上限

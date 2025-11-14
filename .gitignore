@@ -41,15 +41,7 @@ server/email_api.ini
 server/aokbalance_get.ini
 server/server.ini
 web/config.js
-server/example_email_api.ini
-server/example_aokbalance_get.ini
-server/example_server.ini
-config/example_aoksender.ini
-config/example_daemon.ini
-config/example_mail_setting.ini
-config/example_monitor_config.ini
-config/example_mysql.ini
-web/example_config.js
+server/email_checker.ini
 
 # Also ignore backup/working files
 config/*~

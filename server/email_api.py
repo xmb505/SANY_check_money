@@ -8,6 +8,7 @@ import random
 import uuid
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
+from datetime import datetime, timedelta
 import sys
 import os
 import traceback
@@ -34,6 +35,7 @@ DB_NAME = config.get('mysql', 'db_schema')
 
 # 邮件配置
 EMAIL_LIMIT = int(config.get('email', 'email_limit', fallback=25))
+EMAIL_DAILY_LIMIT = int(config.get('email', 'email_daily_limit', fallback=100))
 
 # Aoksend新注册庆祝邮件配置
 NEW_CELEBRATE_TEMPLATE_ID = config.get('aoksender', 'new_celebrate_template_id', fallback='')
@@ -260,6 +262,58 @@ def count_active_user_records(email, equipment_type):
         return -1
     finally:
         release_db_connection(conn)
+
+# 使用内存字典存储每日邮件发送次数，格式为 {email: {date: count}}
+daily_email_counts = {}
+
+def count_emails_sent_today(email):
+    """统计用户今天发送的邮件数量"""
+    today = datetime.now().date().isoformat()
+    
+    # 检查是否是今天的新日期，如果是则清理旧日期
+    cleanup_old_dates()
+    
+    # 获取该邮箱今天的邮件发送次数
+    if email not in daily_email_counts:
+        daily_email_counts[email] = {}
+    
+    if today not in daily_email_counts[email]:
+        daily_email_counts[email][today] = 0
+    
+    return daily_email_counts[email][today]
+
+def cleanup_old_dates():
+    """清理过期的日期数据（保留最近3天的数据）"""
+    today = datetime.now().date()
+    cutoff_date = (today - timedelta(days=3)).isoformat()
+    
+    # 遍历所有邮箱的记录
+    for email in list(daily_email_counts.keys()):
+        # 删除超过3天的日期记录
+        for date_str in list(daily_email_counts[email].keys()):
+            if date_str < cutoff_date:
+                del daily_email_counts[email][date_str]
+        
+        # 如果邮箱没有有效记录，删除该邮箱
+        if not daily_email_counts[email]:
+            del daily_email_counts[email]
+
+def record_email_sent(email):
+    """记录邮件发送"""
+    today = datetime.now().date().isoformat()
+    
+    # 清理旧日期数据
+    cleanup_old_dates()
+    
+    # 增加该邮箱今天的邮件发送次数
+    if email not in daily_email_counts:
+        daily_email_counts[email] = {}
+    
+    if today not in daily_email_counts[email]:
+        daily_email_counts[email][today] = 0
+    
+    daily_email_counts[email][today] += 1
+    return True
 
 def check_verification_records(email, equipment_type):
     """检查用户特定设备类型的验证记录状态"""
@@ -537,6 +591,12 @@ def send_verification_email(email, verifi_code, device_info):
     import subprocess
     import json
     
+    # 检查邮件发送频率限制
+    emails_sent_today = count_emails_sent_today(email)
+    if emails_sent_today >= EMAIL_DAILY_LIMIT:
+        print(f"[WARN] 邮件发送频率超限，邮箱 {email} 今日已发送 {emails_sent_today} 封邮件")
+        return False
+    
     def _send_email():
         try:
             # 从配置文件读取Aoksend配置
@@ -592,6 +652,8 @@ def send_verification_email(email, verifi_code, device_info):
             
             if result.returncode == 0:
                 print(f"[INFO] 验证码邮件发送成功到 {email}")
+                # 记录邮件发送
+                record_email_sent(email)
                 return True
             else:
                 print(f"[ERROR] 邮件发送失败: {result.stderr}")
@@ -608,6 +670,12 @@ def send_change_email(email, change_code, device_info):
     """发送解绑验证码邮件"""
     import subprocess
     import json
+    
+    # 检查邮件发送频率限制
+    emails_sent_today = count_emails_sent_today(email)
+    if emails_sent_today >= EMAIL_DAILY_LIMIT:
+        print(f"[WARN] 邮件发送频率超限，邮箱 {email} 今日已发送 {emails_sent_today} 封邮件")
+        return False
     
     def _send_change_email():
         try:
@@ -664,6 +732,8 @@ def send_change_email(email, change_code, device_info):
             
             if result.returncode == 0:
                 print(f"[INFO] 解绑验证码邮件发送成功到 {email}")
+                # 记录邮件发送
+                record_email_sent(email)
                 return True
             else:
                 print(f"[ERROR] 解绑邮件发送失败: {result.stderr}")
@@ -681,6 +751,13 @@ def send_celebration_email(email, device_id, device_info):
     """发送注册庆祝邮件"""
     import subprocess
     import json
+    from decimal import Decimal
+    
+    # 检查邮件发送频率限制
+    emails_sent_today = count_emails_sent_today(email)
+    if emails_sent_today >= EMAIL_DAILY_LIMIT:
+        print(f"[WARN] 邮件发送频率超限，邮箱 {email} 今日已发送 {emails_sent_today} 封邮件")
+        return False
     
     def _send_celebration_email():
         try:
@@ -717,14 +794,14 @@ def send_celebration_email(email, device_id, device_info):
             if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
                 aoksend_config['api_url'] = 'https://www.aoksend.com/index/api/send_email'
             
-            # 构造模板数据
+            # 构造模板数据，处理Decimal类型
             template_data = {
                 aoksend_config['title_field']: '恭喜注册成功，现在是你邮箱绑定的设备情况',
                 aoksend_config['device_name_field']: device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
-                aoksend_config['device_balance_field']: latest_data['remainingBalance'],
+                aoksend_config['device_balance_field']: float(latest_data['remainingBalance']) if isinstance(latest_data['remainingBalance'], Decimal) else latest_data['remainingBalance'],
                 aoksend_config['device_check_time_field']: str(latest_data['read_time']),
                 aoksend_config['device_statu_field']: latest_data['equipmentStatus'],
-                aoksend_config['device_latest_read_field']: latest_data['total_reading']
+                aoksend_config['device_latest_read_field']: float(latest_data['total_reading']) if isinstance(latest_data['total_reading'], Decimal) else latest_data['total_reading']
             }
             
             # 构建命令行参数
@@ -742,7 +819,7 @@ def send_celebration_email(email, device_id, device_info):
             if aoksend_config['alias']:
                 cmd.extend(['--alias', aoksend_config['alias']])
             
-            cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False)])
+            cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False, default=str)])
             
             if aoksend_config['attachment']:
                 cmd.extend(['--attachment', aoksend_config['attachment']])
@@ -752,6 +829,8 @@ def send_celebration_email(email, device_id, device_info):
             
             if result.returncode == 0:
                 print(f"[INFO] 注册庆祝邮件发送成功到 {email}")
+                # 记录邮件发送
+                record_email_sent(email)
                 return True
             else:
                 print(f"[ERROR] 注册庆祝邮件发送失败: {result.stderr}")
@@ -949,11 +1028,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                     # 插入新记录
                     success = insert_email_record(email, device_id, equipment_type, alarm_num, real_ip)
                     if success:
-                        # 获取设备信息用于发送庆祝邮件
-                        device_info = get_device_info(device_id)
-                        # 发送注册庆祝邮件
-                        send_celebration_email(email, device_id, device_info)
-                        
                         response_data = {
                             "code": 200,
                             "set_client_mode": "wait_user_verifi"
@@ -991,11 +1065,6 @@ class RequestHandler(BaseHTTPRequestHandler):
                             # 既没有冷却期，也没有活跃订阅，可以插入新记录
                             success = insert_email_record(email, device_id, equipment_type, alarm_num, real_ip)
                             if success:
-                                # 获取设备信息用于发送庆祝邮件
-                                device_info = get_device_info(device_id)
-                                # 发送注册庆祝邮件
-                                send_celebration_email(email, device_id, device_info)
-                                
                                 response_data = {
                                     "code": 200,
                                     "set_client_mode": "wait_user_verifi"
@@ -1029,6 +1098,36 @@ class RequestHandler(BaseHTTPRequestHandler):
                 
                 # 处理验证码验证逻辑
                 response_data = verify_code(email, code)
+                
+                # 如果验证码验证成功，发送庆祝邮件
+                if response_data.get("code") == 200 and response_data.get("verifi_statu") == 1:
+                    # 获取用户设备信息用于发送庆祝邮件
+                    # 需要根据邮箱查找对应的设备信息
+                    conn = get_db_connection()
+                    if conn:
+                        try:
+                            with conn.cursor() as cursor:
+                                # 查找用户的设备信息
+                                sql = """SELECT e.device_id, d.equipmentName, d.installationSite, d.equipmentType 
+                                         FROM email e 
+                                         LEFT JOIN device d ON e.device_id = d.id 
+                                         WHERE e.email = %s AND e.verifi_statu = 1 
+                                         ORDER BY e.created_time DESC LIMIT 1"""
+                                cursor.execute(sql, (email,))
+                                result = cursor.fetchone()
+                                if result:
+                                    device_id = result[0]
+                                    device_info = {
+                                        'equipmentName': result[1],
+                                        'installationSite': result[2],
+                                        'equipmentType': result[3]
+                                    }
+                                    # 发送注册庆祝邮件
+                                    send_celebration_email(email, device_id, device_info)
+                        except Exception as e:
+                            print(f"[ERROR] 获取设备信息发送庆祝邮件时出错: {str(e)}")
+                        finally:
+                            release_db_connection(conn)
                 
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
@@ -1165,6 +1264,7 @@ def main():
     server = HTTPServer(('', SERVER_PORT), RequestHandler)
     print(f"[INFO] 邮箱API服务器启动，监听端口 {SERVER_PORT}")
     print(f"[INFO] 邮箱限制: {EMAIL_LIMIT}")
+    print(f"[INFO] 邮箱每日发送限制: {EMAIL_DAILY_LIMIT}")
     print(f"[INFO] 连接池大小: {CONNECTION_POOL_SIZE}")
     print(f"[INFO] 线程池大小: 10")
     print(f"[INFO] 数据库: {DB_HOST}:{DB_PORT}/{DB_NAME}")

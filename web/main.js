@@ -613,6 +613,80 @@ function initModal() {
         });
     }
     
+    // 处理直接输入订阅验证码按钮点击
+    const directVerificationBtn = document.getElementById('direct-verification-btn');
+    if (directVerificationBtn) {
+        directVerificationBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const emailInput = document.getElementById('subscribe-email');
+            const email = emailInput.value;
+            const deviceData = subscribeForm.dataset.deviceData ? JSON.parse(subscribeForm.dataset.deviceData) : null;
+            
+            // 检查邮箱是否为空
+            if (!email) {
+                // 显示浏览器默认的验证提示
+                emailInput.reportValidity();
+                return;
+            }
+            
+            // 验证邮箱格式
+            if (!isValidEmail(email)) {
+                alert('邮箱地址格式不正确，请输入有效的邮箱地址');
+                return;
+            }
+            
+            // 检查设备数据是否存在
+            if (!deviceData) {
+                alert('设备数据不存在，请重新打开订阅窗口');
+                return;
+            }
+            
+            // 关闭订阅模态框
+            document.getElementById('subscribe-modal').style.display = 'none';
+            
+            // 显示验证码输入模态框
+            showVerificationModal(email, deviceData);
+        });
+    }
+    
+    // 处理直接输入解绑验证码按钮点击
+    const directUnsubscribeVerificationBtn = document.getElementById('direct-unsubscribe-verification-btn');
+    if (directUnsubscribeVerificationBtn) {
+        directUnsubscribeVerificationBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const emailInput = document.getElementById('subscribe-email');
+            const email = emailInput.value;
+            const deviceData = subscribeForm.dataset.deviceData ? JSON.parse(subscribeForm.dataset.deviceData) : null;
+            
+            // 检查邮箱是否为空
+            if (!email) {
+                // 显示浏览器默认的验证提示
+                emailInput.reportValidity();
+                return;
+            }
+            
+            // 验证邮箱格式
+            if (!isValidEmail(email)) {
+                alert('邮箱地址格式不正确，请输入有效的邮箱地址');
+                return;
+            }
+            
+            // 检查设备数据是否存在
+            if (!deviceData) {
+                alert('设备数据不存在，请重新打开订阅窗口');
+                return;
+            }
+            
+            // 关闭订阅模态框
+            document.getElementById('subscribe-modal').style.display = 'none';
+            
+            // 显示解绑验证码输入模态框
+            showUnsubscribeVerificationModal(email, deviceData);
+        });
+    }
+    
     // 处理解绑按钮点击
     const unsubscribeBtn = document.getElementById('unsubscribe-btn');
     if (unsubscribeBtn) {

@@ -105,6 +105,7 @@
             <h2>订阅邮件提醒</h2>
             <p class="subscription-info">此操作将把您填写的邮箱绑定到该设备，接收预警通知</p>
             <p class="subscription-warning">注意：验证码有效期为5分钟，每个邮箱最多可发送25次验证码</p>
+            <p class="subscription-warning-important">如果没收到邮件，请查阅垃圾邮件文件夹</p>
             <form id="subscribe-form">
                 <div class="form-group">
                     <label for="subscribe-email">邮箱地址:</label>
@@ -117,6 +118,8 @@
                 <div class="form-group">
                     <button type="submit">订阅</button>
                     <button type="button" id="unsubscribe-btn">解绑</button>
+                    <button type="button" id="direct-verification-btn">直接输入订阅验证码</button>
+                    <button type="button" id="direct-unsubscribe-verification-btn">直接输入解绑验证码</button>
                 </div>
             </form>
         </div>

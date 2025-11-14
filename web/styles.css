@@ -751,6 +751,9 @@ body.dark-mode .home-btn:hover {
     cursor: pointer;
     font-size: 16px;
     margin-top: 10px;
+    display: block; /* 确保按钮为块级元素 */
+    margin-left: auto; /* 居中对齐 */
+    margin-right: auto; /* 居中对齐 */
 }
 
 #close-verification-modal:hover {
@@ -766,6 +769,9 @@ body.dark-mode .home-btn:hover {
     cursor: pointer;
     font-size: 16px;
     margin-top: 10px;
+    display: block; /* 确保按钮为块级元素 */
+    margin-left: auto; /* 居中对齐 */
+    margin-right: auto; /* 居中对齐 */
 }
 
 #close-unsubscribe-verification-modal:hover {
@@ -804,25 +810,52 @@ body.dark-mode .home-btn:hover {
     height: 400px !important;
 }
 
-/* 订阅表单样式 */
-.form-group {
-    margin-bottom: 20px;
-}
-
-.form-group label {
-    display: block;
-    margin-bottom: 5px;
+/* 订阅模态框信息样式 */
+.subscription-info {
+    color: #2196F3;
+    margin-bottom: 10px;
     font-weight: bold;
 }
 
+.subscription-warning {
+    color: #FF9800;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.subscription-warning-important {
+    color: #F44336; /* 红色 */
+    margin-bottom: 10px;
+    font-weight: bold;
+    font-size: 16px; /* 稍微大一点的字体 */
+    text-align: center; /* 居中显示 */
+}
+
+/* 订阅表单样式 */
+.form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center; /* 垂直居中对齐 */
+}
+
+.form-group label {
+    display: inline-block;
+    margin-bottom: 0; /* 由于是flex布局，不需要底部边距 */
+    font-weight: bold;
+    min-width: 120px; /* 确保标签有固定宽度 */
+}
+
 .form-group input {
-    width: 100%;
+    width: auto; /* 让输入框自适应宽度 */
     padding: 10px;
     border: 1px solid var(--form-input-border);
     border-radius: 5px;
     font-size: 16px;
     background-color: var(--form-input-bg);
     color: var(--text-color);
+    flex-grow: 1; /* 输入框占据剩余空间 */
 }
 
 .form-group input:focus {
@@ -835,15 +868,25 @@ body.dark-mode .home-btn:hover {
     width: 100px;
 }
 
+/* 验证模态框中的提交按钮居中 */
+.verification-modal-content .form-group button {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .form-group button {
-    padding: 12px 24px;
+    padding: 10px 12px;
     background-color: var(--set-custom-count-bg);
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     transition: background-color 0.3s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .form-group button:hover {
@@ -851,19 +894,77 @@ body.dark-mode .home-btn:hover {
 }
 
 #unsubscribe-btn {
-    padding: 12px 24px;
+    padding: 10px 12px;
     background-color: var(--unsubscribe-btn-bg); /* 红色背景 */
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 16px;
+    font-size: 14px;
     transition: background-color 0.3s;
-    margin-left: 10px; /* 与订阅按钮之间留一些间距 */
+    margin-left: 5px; /* 与订阅按钮之间留一些间距 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 #unsubscribe-btn:hover {
     background-color: #d32f2f; /* 悬停时更深的红色 */
+}
+
+#direct-verification-btn {
+    padding: 10px 12px;
+    background-color: #FF9800; /* 橙色背景 */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    margin-left: 5px; /* 与其他按钮之间留一些间距 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#direct-verification-btn:hover {
+    background-color: #F57C00; /* 悬停时更深的橙色 */
+}
+
+#direct-unsubscribe-verification-btn {
+    padding: 10px 12px;
+    background-color: #9C27B0; /* 紫色背景 */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+    margin-left: 5px; /* 与其他按钮之间留一些间距 */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#direct-unsubscribe-verification-btn:hover {
+    background-color: #7B1FA2; /* 悬停时更深的紫色 */
+}
+
+/* 暗色主题下的按钮样式 */
+body.dark-mode #direct-verification-btn {
+    background-color: #FF9800; /* 暗色模式下保持橙色 */
+}
+
+body.dark-mode #direct-verification-btn:hover {
+    background-color: #F57C00; /* 悬停时更深的橙色 */
+}
+
+body.dark-mode #direct-unsubscribe-verification-btn {
+    background-color: #9C27B0; /* 暗色模式下保持紫色 */
+}
+
+body.dark-mode #direct-unsubscribe-verification-btn:hover {
+    background-color: #7B1FA2; /* 悬停时更深的紫色 */
 }
 
 /* 详细信息样式 */
