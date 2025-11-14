@@ -63,6 +63,14 @@
                 <!-- 卡片将在这里动态生成 -->
             </div>
         </div>
+        
+        <!-- 页脚区域 -->
+        <div class="footer-content-container">
+            <div class="footer-content-wrapper">
+                <p>项目源码: <a href="https://github.com/xmb505/SANY_check_money" target="_blank">GitHub仓库</a> | 
+                   个人博客: <a href="https://blog.your_mysql_host" target="_blank">新毛博客</a></p>
+            </div>
+        </div>
     </div>
     
     <!-- 图表模态框 -->
@@ -80,6 +88,86 @@
             <span class="close">&times;</span>
             <h2 id="detail-modal-title">设备详细信息</h2>
             <div id="detail-content"></div>
+        </div>
+    </div>
+    
+    <!-- 订阅模态框 -->
+    <div class="modal" id="subscribe-modal">
+        <div class="modal-content subscribe-modal-content">
+            <span class="close">&times;</span>
+            <h2>订阅邮件提醒</h2>
+            <p class="subscription-info">此操作将把您填写的邮箱绑定到该设备，接收预警通知</p>
+            <p class="subscription-warning">注意：验证码有效期为5分钟，每个邮箱最多可发送25次验证码</p>
+            <form id="subscribe-form">
+                <div class="form-group">
+                    <label for="subscribe-email">邮箱地址:</label>
+                    <input type="email" id="subscribe-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="subscribe-alarm">预警阈值 (1-30元):</label>
+                    <input type="number" id="subscribe-alarm" min="1" max="30" value="10" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">订阅</button>
+                    <button type="button" id="unsubscribe-btn">解绑</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 验证码输入模态框 -->
+    <div class="modal" id="verification-modal">
+        <div class="modal-content verification-modal-content">
+            <span class="close">&times;</span>
+            <h2>输入验证码</h2>
+            <p>验证码已发送至您的邮箱，请查收并输入验证码完成验证。</p>
+            <form id="verification-form">
+                <div class="form-group">
+                    <label for="verification-code">验证码:</label>
+                    <input type="text" id="verification-code" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">验证</button>
+                </div>
+            </form>
+            <div id="verification-result" class="verification-result" style="display: none;">
+                <div id="verification-success" class="verification-success" style="display: none;">
+                    <div class="celebration-symbol">🎉</div>
+                    <p>验证成功！</p>
+                    <button id="close-verification-modal">关闭</button>
+                </div>
+                <div id="verification-error" class="verification-error" style="display: none;">
+                    <p id="verification-error-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 解绑验证码输入模态框 -->
+    <div class="modal" id="unsubscribe-verification-modal">
+        <div class="modal-content verification-modal-content">
+            <span class="close">&times;</span>
+            <h2>输入解绑验证码</h2>
+            <p>解绑验证码已发送至您的邮箱，请查收并输入验证码完成解绑。</p>
+            <form id="unsubscribe-verification-form">
+                <div class="form-group">
+                    <label for="unsubscribe-verification-code">验证码:</label>
+                    <input type="text" id="unsubscribe-verification-code" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">解绑</button>
+                </div>
+            </form>
+            <div id="unsubscribe-verification-result" class="verification-result" style="display: none;">
+                <div id="unsubscribe-verification-success" class="verification-success" style="display: none;">
+                    <div class="celebration-symbol">👋</div>
+                    <p>解绑成功！</p>
+                    <button id="close-unsubscribe-verification-modal">关闭</button>
+                </div>
+                <div id="unsubscribe-verification-error" class="verification-error" style="display: none;">
+                    <p id="unsubscribe-verification-error-text"></p>
+                </div>
+            </div>
         </div>
     </div>
     
