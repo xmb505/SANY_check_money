@@ -25,6 +25,7 @@
 17. **动态配置加载**：Web前端支持动态加载配置文件，避免浏览器缓存问题
 18. **响应式设计**：Web界面支持响应式布局，在不同设备上都能良好显示
 19. **文本溢出处理**：优化了设备名称过长时的显示效果，使用省略号代替换行
+20. **邮件订阅和解绑系统**：新增完整的邮件订阅和解绑功能，包含验证码验证机制和用户友好的前端界面
 
 ## 核心功能模块
 
@@ -141,6 +142,73 @@
   - 日志记录中显示真实客户端IP地址，便于分析请求来源
   - 适用于Nginx、Apache等反向代理环境
 
+### 13. 邮件订阅和解绑系统模块 (`server/email_api.py`)
+
+- 提供完整的邮件订阅和解绑功能
+- **API功能模块**：
+  - **注册模式 (reg)**：处理用户订阅请求
+    - 验证邮箱格式、设备类型和设备存在性
+    - 检查邮箱使用次数限制(默认25次)
+    - 检查是否有未过期的验证记录或正常可用的记录
+    - 插入新记录并发送验证邮件
+    - 返回`{"code": 200, "set_client_mode": "wait_user_verifi"}`
+
+  - **验证码验证模式 (enter_code)**：验证用户输入的注册验证码
+    - 验证邮箱格式和必需参数
+    - 查找验证活跃的条目(验证码未过期且未验证)
+    - 验证验证码是否正确
+    - 更新验证状态
+    - 返回验证结果
+
+  - **解绑请求模式 (change_code)**：处理解绑请求
+    - 验证参数和邮箱格式
+    - 检查24小时内是否已请求过解绑
+    - 检查用户是否有正在使用的订阅
+    - 更新记录的updated_time并发送解绑验证码邮件
+    - 返回`{"code": 200, "set_client_mode": "wait_user_change"}`
+
+  - **解绑验证码验证模式 (enter_change)**：验证用户输入的解绑验证码
+    - 验证参数和邮箱格式
+    - 查找对应的订阅记录
+    - 验证解绑验证码是否正确
+    - 更新记录，标记为已解绑
+    - 返回验证结果
+
+- **数据库设计**：
+  - **email表**：存储邮箱订阅信息
+    - `id`：自增主键
+    - `email`：邮箱地址
+    - `uuid`：唯一标识符
+    - `device_id`：设备ID
+    - `verifi_code`：验证验证码
+    - `verifi_end_time`：验证验证码过期时间（自动计算为created_time + 300秒）
+    - `life_end_time`：生命周期结束时间（自动计算为created_time + 1年）
+    - `ip_address`：IP地址
+    - `alarm_num`：预警阈值
+    - `equipment_type`：设备类型（0=电表，1=水表）
+    - `change_code`：解绑验证码
+    - `verifi_statu`：验证状态（0=未验证，1=已验证）
+    - `change_device_statu`：解绑状态（0=未解绑，1=已解绑）
+    - `created_time`：创建时间
+    - `updated_time`：更新时间
+
+- **前端实现 (`web/index.html`, `web/main.js`)**：
+  - 每个设备卡片添加邮件图标按钮
+  - 点击后弹出订阅模态框，询问邮箱和预警阈值
+  - 支持订阅和解绑双重功能
+  - 解绑按钮为红色，位于订阅按钮右侧
+  - 验证码验证界面
+  - 成功/失败状态反馈
+  - 防止成功状态被后续错误信息覆盖的机制
+
+- **安全机制**：
+  - 邮箱使用次数限制(默认25次)
+  - 验证码冷却期检查(5分钟)
+  - 解绑请求24小时限制
+  - 设备类型匹配验证
+  - 邮箱格式验证
+  - 防止验证码被后续错误覆盖的安全机制
+
 ## 核心技术实现
 
 ### 签名算法详解
@@ -240,6 +308,8 @@
 - `aoksend-api-cli.md`：Aoksend API CLI工具使用说明文档
 - `server/server.py`：Web后端API服务（高性能版本，支持连接池和线程池）
 - `server/server.ini`：API服务配置文件
+- `server/email_api.py`：邮件订阅系统后端API（支持订阅、验证、解绑功能）
+- `server/email_api.ini`：邮件API服务配置文件
 - `web/`：Web前端文件目录
   - `index.html`：Web界面主页面
   - `main.js`：Web界面主逻辑
@@ -402,6 +472,14 @@ python3 server.py
 
 该命令会启动Web后端API服务，默认监听8080端口。
 
+### 启动邮件订阅API服务
+```bash
+cd server
+python3 email_api.py
+```
+
+该命令会启动邮件订阅系统API服务，默认监听8081端口。
+
 ### 访问Web界面
 在浏览器中打开 `http://localhost:8080` 即可访问Web界面。
 
@@ -464,6 +542,50 @@ monitor_timer = 3600
 monitor_keyword = remainingBalance
 # 低于数值触发程序阈值
 monitor_start = 10
+```
+
+### server/email_api.ini
+邮件订阅API服务配置文件，包含：
+- 服务器端口
+- 邮件限制次数
+- 数据库连接信息
+- Aoksend邮件服务配置
+
+示例配置：
+```ini
+[server]
+port = 8081
+
+[email]
+# 表记录中同一个邮件最多出现次数，超过此值拒绝服务
+email_limit = 25
+
+[mysql]
+mysql_server = your_mysql_host
+mysql_port = 3306
+login_user = your_username
+login_passwd = your_password
+db_schema = your_database_name
+
+[aoksender]
+# API地址(选填)
+server = 
+# API密钥
+app_key = YOUR_API_KEY_HERE
+# 模板ID
+template_id = YOUR_TEMPLATE_ID_HERE
+# 默认回复地址
+reply_to = 
+# 发件人名称
+alias = 新毛云
+# 邮件附件, 仅专业版可用；发送附件时, 必须使用 multipart/form-data 进行 post 提交 (表单提交)
+attachment =
+# 模板中验证码字段名
+verifi_code = code
+# 模板中解绑码字段名
+change_code = code
+# 模板ID
+change_template_id = YOUR_TEMPLATE_ID_HERE
 ```
 
 ### config/daemon.ini
@@ -543,6 +665,7 @@ first_screen_count = 6
 ### web/config.js
 Web前端配置文件，包含：
 - API服务器地址和端口
+- 邮件API服务器地址和端口
 - 请求超时时间
 - 默认数据量和模式
 - 界面显示配置
@@ -553,6 +676,9 @@ Web前端配置文件，包含：
 window.DYNAMIC_CONFIG = {
     // API服务器地址和端口
     API_BASE_URL: 'https://check_api.your_mysql_host',
+    
+    // 邮件API服务器地址和端口
+    EMAIL_API_BASE_URL: 'http://192.168.1.3:8081',  // 使用http协议，因为邮件API服务器使用http
     
     // 请求超时时间(毫秒)
     API_TIMEOUT: 5000,
@@ -627,6 +753,10 @@ window.DYNAMIC_CONFIG = {
 24. **动态配置加载**：Web前端支持动态加载配置文件，避免浏览器缓存问题
 25. **响应式设计**：Web界面支持响应式布局，在不同设备上都能良好显示
 26. **文本溢出处理**：优化了设备名称过长时的显示效果，使用省略号代替换行
+27. **完整的邮件订阅系统**：支持用户订阅、验证、解绑的完整生命周期管理
+28. **安全机制完善**：包含邮箱使用次数限制、验证码冷却期、解绑时间限制等多种安全措施
+29. **用户友好的前端界面**：包含订阅/解绑按钮、验证码输入界面、成功/失败反馈等
+30. **错误处理机制**：防止成功状态被后续错误信息覆盖的安全机制
 
 ## 后续扩展建议
 
@@ -644,6 +774,10 @@ window.DYNAMIC_CONFIG = {
 12. **数据导出功能**：添加数据导出为Excel或CSV格式的功能
 13. **API安全增强**：实现API访问频率限制和认证机制
 14. **实时数据推送**：使用WebSocket实现实时数据推送功能
+15. **用户管理功能**：实现用户注册、登录、权限管理等机制
+16. **通知中心**：集成多种通知方式（短信、微信、推送等）
+17. **数据分析功能**：增加使用趋势分析、预测等功能
+18. **API文档**：提供完整的API文档和SDK
 
 ## 技术难点和解决方案
 
@@ -726,3 +860,12 @@ window.DYNAMIC_CONFIG = {
 ### 文本溢出处理
 - **难点**：设备名称过长导致界面显示问题
 - **解决方案**：使用CSS的`white-space: nowrap`、`overflow: hidden`和`text-overflow: ellipsis`属性处理文本溢出
+
+### 邮件订阅系统实现
+- **难点**：需要实现完整的订阅、验证、解绑流程，包含多种安全机制
+- **解决方案**：
+  - 设计完整的email表结构，包含验证码、过期时间等字段
+  - 实现验证码生成、邮件发送、状态验证等功能
+  - 添加邮箱使用次数限制、验证码冷却期等安全机制
+  - 前端实现用户友好的界面和交互流程
+  - 防止成功状态被后续错误覆盖的安全机制

@@ -439,30 +439,66 @@ body.dark-mode #set-custom-count {
 }
 
 .toggle-details-btn {
-    display: block;
-    width: 100%;
     padding: 10px;
     background-color: #4CAF50;
     color: white;
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    margin-top: auto;
+    flex-grow: 1;
     transition: background-color 0.3s;
+    margin-top: auto;
 }
 
 .toggle-details-btn:hover {
     background-color: #45a049;
 }
 
-.chart-container {
-    margin-top: 15px;
-    height: 150px;
+/* 卡片按钮组 */
+.card-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+    width: 100%;
 }
 
-.mini-chart {
-    width: 100% !important;
-    height: 100% !important;
+.toggle-details-btn {
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    flex-grow: 1;
+    transition: background-color 0.3s;
+    margin-top: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.toggle-details-btn:hover {
+    background-color: #45a049;
+}
+
+.subscribe-btn {
+    padding: 10px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 40px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.subscribe-btn:hover {
+    background-color: #1976D2;
 }
 
 /* 图表模态框 */
@@ -492,6 +528,70 @@ body.dark-mode #set-custom-count {
     overflow-y: auto;
 }
 
+.subscribe-modal-content {
+    max-width: 500px;
+}
+
+.verification-modal-content {
+    max-width: 400px;
+    text-align: center;
+}
+
+.verification-result {
+    margin-top: 20px;
+}
+
+.verification-success {
+    color: #4CAF50;
+}
+
+.unsubscribe-verification-success {
+    color: #4CAF50;
+}
+
+.celebration-symbol {
+    font-size: 48px;
+    margin: 20px 0;
+}
+
+#close-verification-modal {
+    padding: 10px 20px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+#close-verification-modal:hover {
+    background-color: #1976D2;
+}
+
+#close-unsubscribe-verification-modal {
+    padding: 10px 20px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+#close-unsubscribe-verification-modal:hover {
+    background-color: #1976D2;
+}
+
+.verification-error {
+    color: #F44336;
+}
+
+.unsubscribe-verification-error {
+    color: #F44336;
+}
+
 .close {
     color: #aaa;
     float: right;
@@ -514,6 +614,68 @@ body.dark-mode #set-custom-count {
 #chart-canvas {
     width: 100% !important;
     height: 400px !important;
+}
+
+/* 订阅表单样式 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 16px;
+    background-color: #fff;
+    color: #333;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.form-group input[type="number"] {
+    width: 100px;
+}
+
+.form-group button {
+    padding: 12px 24px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.form-group button:hover {
+    background-color: #45a049;
+}
+
+#unsubscribe-btn {
+    padding: 12px 24px;
+    background-color: #f44336; /* 红色背景 */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    margin-left: 10px; /* 与订阅按钮之间留一些间距 */
+}
+
+#unsubscribe-btn:hover {
+    background-color: #d32f2f; /* 悬停时更深的红色 */
 }
 
 /* 详细信息样式 */
@@ -588,4 +750,57 @@ body.dark-mode #set-custom-count {
         width: auto;
         margin-bottom: 5px;
     }
+}
+
+/* 页脚样式 */
+.footer-content-container {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    padding: 20px;
+}
+
+.footer-content-wrapper {
+    text-align: center;
+}
+
+.footer-content-wrapper a {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+.footer-content-wrapper a:hover {
+    text-decoration: underline;
+}
+
+/* 响应式页脚 - 当屏幕较小时，链接垂直排列 */
+@media (max-width: 480px) {
+    .footer-content-wrapper p {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        align-items: center;
+    }
+}
+
+/* 暗色主题页脚 */
+body.dark-mode .footer-content-container {
+    background-color: #333;
+}
+
+body.dark-mode .footer-content-wrapper a {
+    color: #64B5F6;
+}
+
+/* 暗色模式表单输入框 */
+body.dark-mode .form-group input {
+    background-color: #444;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode .form-group input:focus {
+    border-color: #64B5F6;
+    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
 }

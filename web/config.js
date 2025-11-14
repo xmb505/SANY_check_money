@@ -3,6 +3,9 @@ window.DYNAMIC_CONFIG = {
     // API服务器地址和端口
     API_BASE_URL: 'https://check_api.your_mysql_host',
     
+    // 邮件API服务器地址和端口
+    EMAIL_API_BASE_URL: 'http://192.168.1.3:8081',  // 使用http协议，因为邮件API服务器使用http
+    
     // 请求超时时间(毫秒)
     API_TIMEOUT: 5000,
     

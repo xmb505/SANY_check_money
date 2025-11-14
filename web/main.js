@@ -4,6 +4,7 @@ let currentDataCount = 5; // 默认值
 let currentMode = 'usage'; // 默认值
 let currentDeviceIds = [];
 let deviceDataCache = {};
+let isVerificationSuccessful = false; // 跟踪验证是否成功
 
 // 带超时的fetch函数
 async function fetchWithTimeout(url, options = {}) {
@@ -91,17 +92,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // 初始化图表模态框
             initModal();
             
-            // 初始化数据量选择按钮
-            initDataCountButtons();
-            
-            // 初始化模式按钮
-            initModeButtons();
-            
-            // 初始化搜索功能
-            initSearch();
-            
-            // 初始化图表模态框
-            initModal();
+            // 初始化订阅模态框
+            initSubscribeModal();
             
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
@@ -139,6 +131,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 初始化图表模态框
             initModal();
+            
+            // 初始化订阅模态框
+            initSubscribeModal();
             
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
@@ -495,6 +490,108 @@ function initModal() {
     });
 }
 
+// 初始化订阅模态框
+function initSubscribeModal() {
+    const modals = document.querySelectorAll('.modal');
+    const closeBtns = document.querySelectorAll('.close');
+    
+    // 关闭模态框
+    closeBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            const modal = this.closest('.modal');
+            modal.style.display = 'none';
+        });
+    });
+    
+    // 点击模态框外部关闭
+    window.addEventListener('click', function(event) {
+        modals.forEach(modal => {
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        });
+    });
+    
+    // 处理订阅表单提交
+    const subscribeForm = document.getElementById('subscribe-form');
+    if (subscribeForm) {
+        subscribeForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('subscribe-email').value;
+            const alarm = parseInt(document.getElementById('subscribe-alarm').value);
+            const deviceData = subscribeForm.dataset.deviceData ? JSON.parse(subscribeForm.dataset.deviceData) : null;
+            
+            if (deviceData) {
+                submitSubscription(email, alarm, deviceData);
+            }
+        });
+    }
+    
+    // 处理解绑按钮点击
+    const unsubscribeBtn = document.getElementById('unsubscribe-btn');
+    if (unsubscribeBtn) {
+        unsubscribeBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('subscribe-email').value;
+            const deviceData = subscribeForm.dataset.deviceData ? JSON.parse(subscribeForm.dataset.deviceData) : null;
+            
+            if (deviceData) {
+                submitUnsubscribe(email, deviceData);
+            }
+        });
+    }
+    
+    // 处理验证码表单提交
+    const verificationForm = document.getElementById('verification-form');
+    if (verificationForm) {
+        verificationForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = verificationForm.dataset.email;
+            const code = document.getElementById('verification-code').value;
+            const deviceData = verificationForm.dataset.deviceData ? JSON.parse(verificationForm.dataset.deviceData) : null;
+            
+            if (deviceData) {
+                submitVerificationCode(email, code, deviceData);
+            }
+        });
+    }
+    
+    // 处理解绑验证码表单提交
+    const unsubscribeVerificationForm = document.getElementById('unsubscribe-verification-form');
+    if (unsubscribeVerificationForm) {
+        unsubscribeVerificationForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const email = unsubscribeVerificationForm.dataset.email;
+            const code = document.getElementById('unsubscribe-verification-code').value;
+            const deviceData = unsubscribeVerificationForm.dataset.deviceData ? JSON.parse(unsubscribeVerificationForm.dataset.deviceData) : null;
+            
+            if (deviceData) {
+                submitUnsubscribeVerificationCode(email, code, deviceData);
+            }
+        });
+    }
+    
+    // 处理验证码验证关闭按钮
+    const closeVerificationBtn = document.getElementById('close-verification-modal');
+    if (closeVerificationBtn) {
+        closeVerificationBtn.addEventListener('click', function() {
+            document.getElementById('verification-modal').style.display = 'none';
+        });
+    }
+    
+    // 处理解绑验证码验证关闭按钮
+    const closeUnsubscribeVerificationBtn = document.getElementById('close-unsubscribe-verification-modal');
+    if (closeUnsubscribeVerificationBtn) {
+        closeUnsubscribeVerificationBtn.addEventListener('click', function() {
+            document.getElementById('unsubscribe-verification-modal').style.display = 'none';
+        });
+    }
+}
+
 // 加载首页数据
 async function loadFirstScreenData() {
     try {
@@ -607,7 +704,10 @@ function createDeviceCard(deviceData) {
         <div class="chart-container">
             <canvas class="mini-chart" data-device-id="${deviceData.device_id}"></canvas>
         </div>
-        <button class="toggle-details-btn" data-device-id="${deviceData.device_id}">查看详细信息</button>
+        <div class="card-buttons">
+            <button class="toggle-details-btn" data-device-id="${deviceData.device_id}">查看详细信息</button>
+            <button class="subscribe-btn" data-device-id="${deviceData.device_id}" data-equipment-type="${deviceData.equipmentType}">✉️</button>
+        </div>
     `;
     
     // 添加查看详细信息按钮事件监听器
@@ -615,6 +715,13 @@ function createDeviceCard(deviceData) {
     
     toggleBtn.addEventListener('click', function() {
         showDetailedInfo(deviceData);
+    });
+    
+    // 添加订阅邮件按钮事件监听器
+    const subscribeBtn = card.querySelector('.subscribe-btn');
+    
+    subscribeBtn.addEventListener('click', function() {
+        showSubscribeModal(deviceData);
     });
     
     // 初始时创建迷你图表，并添加点击事件
@@ -903,6 +1010,333 @@ function showChart(deviceData) {
             }
         }
     });
+}
+
+// 显示订阅模态框
+function showSubscribeModal(deviceData) {
+    const modal = document.getElementById('subscribe-modal');
+    const emailInput = document.getElementById('subscribe-email');
+    const alarmInput = document.getElementById('subscribe-alarm');
+    const subscribeForm = document.getElementById('subscribe-form');
+    
+    // 重置表单
+    emailInput.value = '';
+    alarmInput.value = 10;
+    
+    // 将设备数据存储在表单的dataset中
+    subscribeForm.dataset.deviceData = JSON.stringify(deviceData);
+    
+    // 显示模态框
+    modal.style.display = 'block';
+}
+
+// 提交订阅
+async function submitSubscription(email, alarm, deviceData) {
+    try {
+        // 使用默认API地址，如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+        
+        const response = await fetchWithTimeout(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                mode: 'reg',
+                email: email,
+                equipment_type: parseInt(deviceData.equipmentType),
+                device_id: deviceData.device_id,
+                alarm_num: alarm
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.code === 200) {
+            if (result.set_client_mode === "wait_user_verifi") {
+                // 关闭订阅模态框
+                document.getElementById('subscribe-modal').style.display = 'none';
+                
+                // 显示验证码输入模态框
+                showVerificationModal(email, deviceData);
+            } else {
+                alert('订阅成功！');
+                // 关闭模态框
+                document.getElementById('subscribe-modal').style.display = 'none';
+            }
+        } else {
+            alert(`订阅失败: ${result.error_text || '未知错误'}`);
+        }
+    } catch (error) {
+        console.error('订阅请求失败:', error);
+        alert('订阅请求失败，请检查网络连接或联系管理员。');
+    }
+}
+
+// 显示验证码输入模态框
+function showVerificationModal(email, deviceData) {
+    const modal = document.getElementById('verification-modal');
+    const codeInput = document.getElementById('verification-code');
+    const verificationForm = document.getElementById('verification-form');
+    const verificationResult = document.getElementById('verification-result');
+    const verificationSuccess = document.getElementById('verification-success');
+    const verificationError = document.getElementById('verification-error');
+    const verificationErrorText = document.getElementById('verification-error-text');
+    
+    // 重置表单和结果
+    codeInput.value = '';
+    verificationResult.style.display = 'none';
+    verificationSuccess.style.display = 'none';
+    verificationError.style.display = 'none';
+    
+    // 重置验证成功状态
+    isVerificationSuccessful = false;
+    
+    // 将设备数据存储在表单的dataset中
+    verificationForm.dataset.email = email;
+    verificationForm.dataset.deviceData = JSON.stringify(deviceData);
+    
+    // 显示模态框
+    modal.style.display = 'block';
+    
+    // 添加表单提交事件监听器
+    verificationForm.onsubmit = function(e) {
+        e.preventDefault();
+        const code = codeInput.value;
+        const deviceData = JSON.parse(verificationForm.dataset.deviceData);
+        submitVerificationCode(email, code, deviceData);
+    };
+    
+    // 添加关闭按钮事件监听器
+    document.getElementById('close-verification-modal').onclick = function() {
+        modal.style.display = 'none';
+    };
+}
+
+// 提交验证码
+async function submitVerificationCode(email, code, deviceData) {
+    // 如果验证已经成功，不再处理后续请求
+    if (isVerificationSuccessful) {
+        return;
+    }
+    try {
+        // 使用默认API地址，如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+        
+        const response = await fetchWithTimeout(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                mode: 'enter_code',
+                email: email,
+                code: code
+            })
+        });
+        
+        const result = await response.json();
+        
+        const verificationResult = document.getElementById('verification-result');
+        const verificationSuccess = document.getElementById('verification-success');
+        const verificationError = document.getElementById('verification-error');
+        const verificationErrorText = document.getElementById('verification-error-text');
+        
+        // 检查是否已经显示了庆祝符号，如果是则不再更新显示
+        if (verificationSuccess.style.display === 'block') {
+            return; // 遶止后续处理，保持庆祝符号显示
+        }
+        
+        if (result.code === 200) {
+            if (result.verifi_statu === 1) {
+                // 验证成功
+                isVerificationSuccessful = true; // 设置验证成功状态
+                verificationResult.style.display = 'block';
+                verificationSuccess.style.display = 'block';
+                verificationError.style.display = 'none';
+            } else {
+                // 其他情况
+                verificationResult.style.display = 'block';
+                verificationSuccess.style.display = 'none';
+                verificationError.style.display = 'block';
+                verificationErrorText.textContent = '验证失败';
+            }
+        } else {
+            // 验证失败
+            verificationResult.style.display = 'block';
+            verificationSuccess.style.display = 'none';
+            verificationError.style.display = 'block';
+            verificationErrorText.textContent = result.error_text || '验证失败';
+        }
+    } catch (error) {
+        console.error('验证码验证失败:', error);
+        const verificationResult = document.getElementById('verification-result');
+        const verificationSuccess = document.getElementById('verification-success');
+        const verificationError = document.getElementById('verification-error');
+        const verificationErrorText = document.getElementById('verification-error-text');
+        
+        // 如果验证已经成功，不再处理错误
+        if (isVerificationSuccessful) {
+            return; // 阻止后续处理，保持庆祝符号显示
+        }
+        
+        verificationError.style.display = 'block';
+        verificationErrorText.textContent = '验证请求失败，请检查网络连接或联系管理员。';
+    }
+}
+
+// 提交解绑请求
+async function submitUnsubscribe(email, deviceData) {
+    try {
+        // 使用默认API地址，如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+        
+        const response = await fetchWithTimeout(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                mode: 'change_code',
+                email: email,
+                equipment_type: parseInt(deviceData.equipmentType),
+                device_id: deviceData.device_id
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.code === 200) {
+            if (result.set_client_mode === "wait_user_change") {
+                // 关闭订阅模态框
+                document.getElementById('subscribe-modal').style.display = 'none';
+                
+                // 显示解绑验证码输入模态框
+                showUnsubscribeVerificationModal(email, deviceData);
+            } else {
+                alert('解绑失败: 返回数据格式不正确');
+            }
+        } else if (result.code === 418) {
+            alert(`解绑失败: ${result.error_text || '未知错误'}`);
+        } else {
+            alert('解绑失败: 未知错误');
+        }
+    } catch (error) {
+        console.error('解绑请求失败:', error);
+        alert('解绑请求失败，请检查网络连接或联系管理员。');
+    }
+}
+
+// 显示解绑验证码输入模态框
+function showUnsubscribeVerificationModal(email, deviceData) {
+    const modal = document.getElementById('unsubscribe-verification-modal');
+    const codeInput = document.getElementById('unsubscribe-verification-code');
+    const verificationForm = document.getElementById('unsubscribe-verification-form');
+    const verificationResult = document.getElementById('unsubscribe-verification-result');
+    const verificationSuccess = document.getElementById('unsubscribe-verification-success');
+    const verificationError = document.getElementById('unsubscribe-verification-error');
+    const verificationErrorText = document.getElementById('unsubscribe-verification-error-text');
+    
+    // 重置表单和结果
+    codeInput.value = '';
+    verificationResult.style.display = 'none';
+    verificationSuccess.style.display = 'none';
+    verificationError.style.display = 'none';
+    
+    // 将设备数据存储在表单的dataset中
+    verificationForm.dataset.email = email;
+    verificationForm.dataset.deviceData = JSON.stringify(deviceData);
+    
+    // 显示模态框
+    modal.style.display = 'block';
+    
+    // 添加表单提交事件监听器
+    verificationForm.onsubmit = function(e) {
+        e.preventDefault();
+        const code = codeInput.value;
+        const deviceData = JSON.parse(verificationForm.dataset.deviceData);
+        submitUnsubscribeVerificationCode(email, code, deviceData);
+    };
+    
+    // 添加关闭按钮事件监听器
+    document.getElementById('close-unsubscribe-verification-modal').onclick = function() {
+        modal.style.display = 'none';
+    };
+}
+
+// 提交解绑验证码
+async function submitUnsubscribeVerificationCode(email, code, deviceData) {
+    try {
+        // 使用默认API地址，如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+        
+        const response = await fetchWithTimeout(apiUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                mode: 'enter_change',
+                email: email,
+                equipment_type: parseInt(deviceData.equipmentType),
+                device_id: deviceData.device_id,
+                change_code: code
+            })
+        });
+        
+        const result = await response.json();
+        
+        const verificationResult = document.getElementById('unsubscribe-verification-result');
+        const verificationSuccess = document.getElementById('unsubscribe-verification-success');
+        const verificationError = document.getElementById('unsubscribe-verification-error');
+        const verificationErrorText = document.getElementById('unsubscribe-verification-error-text');
+        
+        // 检查是否已经显示了解绑成功符号，如果是则不再更新显示
+        if (verificationSuccess.style.display === 'block') {
+            return; // 阻止后续处理，保持拜拜符号显示
+        }
+        
+        if (result.code === 200) {
+            if (result.change_device_statu === 1) {
+                // 解绑成功
+                verificationResult.style.display = 'block';
+                verificationSuccess.style.display = 'block';
+                verificationError.style.display = 'none';
+            } else {
+                // 解绑失败
+                verificationResult.style.display = 'block';
+                verificationSuccess.style.display = 'none';
+                verificationError.style.display = 'block';
+                verificationErrorText.textContent = '解绑失败';
+            }
+        } else if (result.code === 418) {
+            // 解绑验证码错误
+            verificationResult.style.display = 'block';
+            verificationSuccess.style.display = 'none';
+            verificationError.style.display = 'block';
+            verificationErrorText.textContent = result.error_text || '解绑验证码错误';
+        } else {
+            // 解绑失败
+            verificationResult.style.display = 'block';
+            verificationSuccess.style.display = 'none';
+            verificationError.style.display = 'block';
+            verificationErrorText.textContent = result.error_text || '解绑失败';
+        }
+    } catch (error) {
+        console.error('解绑验证码验证失败:', error);
+        const verificationResult = document.getElementById('unsubscribe-verification-result');
+        const verificationSuccess = document.getElementById('unsubscribe-verification-success');
+        const verificationError = document.getElementById('unsubscribe-verification-error');
+        const verificationErrorText = document.getElementById('unsubscribe-verification-error-text');
+        
+        // 如果解绑已经成功，不再处理错误
+        if (verificationSuccess.style.display === 'block') {
+            return; // 阻止后续处理，保持拜拜符号显示
+        }
+        
+        verificationError.style.display = 'block';
+        verificationErrorText.textContent = '解绑请求失败，请检查网络连接或联系管理员。';
+    }
 }
 
 // 显示详细信息
