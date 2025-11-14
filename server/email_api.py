@@ -488,8 +488,12 @@ def send_verification_email(email, verifi_code, device_info):
                 'reply_to': config.get('aoksender', 'reply_to', fallback=None),
                 'alias': config.get('aoksender', 'alias', fallback='新毛云'),
                 'attachment': config.get('aoksender', 'attachment', fallback=None),
+<<<<<<< HEAD
                 'verifi_code_field': config.get('aoksender', 'verifi_code', fallback='code'),
                 'verifi_email_statu_field': config.get('aoksender', 'verifi_email_statu', fallback='email_mode')
+=======
+                'verifi_code_field': config.get('aoksender', 'verifi_code', fallback='code')
+>>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
             }
             
             if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
@@ -499,7 +503,10 @@ def send_verification_email(email, verifi_code, device_info):
             template_data = {
                 'email': email,
                 aoksend_config['verifi_code_field']: verifi_code,  # 使用配置的字段名
+<<<<<<< HEAD
                 aoksend_config['verifi_email_statu_field']: '注册',  # 使用配置的字段名发送操作类型
+=======
+>>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
                 'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
                 'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
                 'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
@@ -560,8 +567,12 @@ def send_change_email(email, change_code, device_info):
                 'reply_to': config.get('aoksender', 'reply_to', fallback=None),
                 'alias': config.get('aoksender', 'alias', fallback='新毛云'),
                 'attachment': config.get('aoksender', 'attachment', fallback=None),
+<<<<<<< HEAD
                 'change_code_field': config.get('aoksender', 'change_code', fallback='code'),
                 'change_email_statu_field': config.get('aoksender', 'change_email_statu', fallback='email_mode')
+=======
+                'change_code_field': config.get('aoksender', 'change_code', fallback='code')
+>>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
             }
             
             if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
@@ -571,7 +582,10 @@ def send_change_email(email, change_code, device_info):
             template_data = {
                 'email': email,
                 aoksend_config['change_code_field']: change_code,  # 使用配置的字段名
+<<<<<<< HEAD
                 aoksend_config['change_email_statu_field']: '解绑',  # 使用配置的字段名发送操作类型
+=======
+>>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
                 'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
                 'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
                 'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
