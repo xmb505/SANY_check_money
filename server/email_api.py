@@ -35,6 +35,15 @@ DB_NAME = config.get('mysql', 'db_schema')
 # 邮件配置
 EMAIL_LIMIT = int(config.get('email', 'email_limit', fallback=25))
 
+# Aoksend新注册庆祝邮件配置
+NEW_CELEBRATE_TEMPLATE_ID = config.get('aoksender', 'new_celebrate_template_id', fallback='')
+NEW_CELEBRATE_TITLE_FIELD = config.get('aoksender', 'new_celebrate_title', fallback='title')
+NEW_CELEBRATE_DEVICE_NAME_FIELD = config.get('aoksender', 'new_celebrate_device_name', fallback='acctName')
+NEW_CELEBRATE_DEVICE_BALANCE_FIELD = config.get('aoksender', 'new_celebrate_device_balance', fallback='remainingBalance')
+NEW_CELEBRATE_DEVICE_CHECK_TIME_FIELD = config.get('aoksender', 'new_celebrate_device_check_time', fallback='currentDealDate')
+NEW_CELEBRATE_DEVICE_STATU_FIELD = config.get('aoksender', 'new_celebrate_device_statu', fallback='equipmentStatus')
+NEW_CELEBRATE_DEVICE_LATEST_READ_FIELD = config.get('aoksender', 'new_celebrate_device_latest_read', fallback='equipmentLatestLarge')
+
 # 创建线程池
 executor = ThreadPoolExecutor(max_workers=10)
 
@@ -412,6 +421,38 @@ def get_device_info(device_id):
     finally:
         release_db_connection(conn)
 
+def get_latest_device_data(device_id):
+    """获取设备最新的数据记录"""
+    conn = get_db_connection()
+    if not conn:
+        return None
+    
+    try:
+        with conn.cursor() as cursor:
+            # 获取设备最新的数据记录
+            sql = """
+                SELECT total_reading, remainingBalance, equipmentStatus, read_time
+                FROM data 
+                WHERE device_id = %s 
+                ORDER BY read_time DESC 
+                LIMIT 1
+            """
+            cursor.execute(sql, (str(device_id),))
+            result = cursor.fetchone()
+            if result:
+                return {
+                    'total_reading': result[0],
+                    'remainingBalance': result[1],
+                    'equipmentStatus': result[2],
+                    'read_time': result[3]
+                }
+            return None
+    except Exception as e:
+        print(f"[ERROR] 获取设备最新数据时出错: {str(e)}")
+        return None
+    finally:
+        release_db_connection(conn)
+
 def check_unsubscribe_request_limit(email, device_id, equipment_type):
     """检查解绑请求时间限制（24小时内不能重复请求）"""
     conn = get_db_connection()
@@ -635,6 +676,94 @@ def send_change_email(email, change_code, device_info):
     future = executor.submit(_send_change_email)
     return future.result()
 
+
+def send_celebration_email(email, device_id, device_info):
+    """发送注册庆祝邮件"""
+    import subprocess
+    import json
+    
+    def _send_celebration_email():
+        try:
+            # 获取设备最新数据
+            latest_data = get_latest_device_data(device_id)
+            if not latest_data:
+                print(f"[WARNING] 无法获取设备 {device_id} 的最新数据")
+                latest_data = {
+                    'total_reading': 'N/A',
+                    'remainingBalance': 'N/A',
+                    'equipmentStatus': 'N/A',
+                    'read_time': 'N/A'
+                }
+            
+            # 从配置文件获取Aoksend配置
+            config = configparser.ConfigParser()
+            config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
+            
+            aoksend_config = {
+                'api_url': config.get('aoksender', 'server', fallback='https://www.aoksend.com/index/api/send_email'),
+                'app_key': config.get('aoksender', 'app_key'),
+                'celebrate_template_id': config.get('aoksender', 'new_celebrate_template_id', fallback=config.get('aoksender', 'template_id')),
+                'reply_to': config.get('aoksender', 'reply_to', fallback=None),
+                'alias': config.get('aoksender', 'alias', fallback='新毛云'),
+                'attachment': config.get('aoksender', 'attachment', fallback=None),
+                'title_field': config.get('aoksender', 'new_celebrate_title', fallback='title'),
+                'device_name_field': config.get('aoksender', 'new_celebrate_device_name', fallback='acctName'),
+                'device_balance_field': config.get('aoksender', 'new_celebrate_device_balance', fallback='remainingBalance'),
+                'device_check_time_field': config.get('aoksender', 'new_celebrate_device_check_time', fallback='currentDealDate'),
+                'device_statu_field': config.get('aoksender', 'new_celebrate_device_statu', fallback='equipmentStatus'),
+                'device_latest_read_field': config.get('aoksender', 'new_celebrate_device_latest_read', fallback='equipmentLatestLarge')
+            }
+            
+            if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
+                aoksend_config['api_url'] = 'https://www.aoksend.com/index/api/send_email'
+            
+            # 构造模板数据
+            template_data = {
+                aoksend_config['title_field']: '恭喜注册成功，现在是你邮箱绑定的设备情况',
+                aoksend_config['device_name_field']: device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
+                aoksend_config['device_balance_field']: latest_data['remainingBalance'],
+                aoksend_config['device_check_time_field']: str(latest_data['read_time']),
+                aoksend_config['device_statu_field']: latest_data['equipmentStatus'],
+                aoksend_config['device_latest_read_field']: latest_data['total_reading']
+            }
+            
+            # 构建命令行参数
+            cmd = [
+                sys.executable, 'aoksend-api-cli.py',
+                '--api-url', aoksend_config['api_url'],
+                '--app-key', aoksend_config['app_key'],
+                '--template-id', aoksend_config['celebrate_template_id'],
+                '--to', email
+            ]
+            
+            if aoksend_config['reply_to']:
+                cmd.extend(['--reply-to', aoksend_config['reply_to']])
+            
+            if aoksend_config['alias']:
+                cmd.extend(['--alias', aoksend_config['alias']])
+            
+            cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False)])
+            
+            if aoksend_config['attachment']:
+                cmd.extend(['--attachment', aoksend_config['attachment']])
+            
+            # 执行命令
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
+            
+            if result.returncode == 0:
+                print(f"[INFO] 注册庆祝邮件发送成功到 {email}")
+                return True
+            else:
+                print(f"[ERROR] 注册庆祝邮件发送失败: {result.stderr}")
+                return False
+        except Exception as e:
+            print(f"[ERROR] 发送注册庆祝邮件时出错: {str(e)}")
+            return False
+    
+    # 使用线程池并发处理邮件发送
+    future = executor.submit(_send_celebration_email)
+    return future.result()
+
 def generate_change_code():
     """生成6位解绑验证码"""
     return random.randint(100000, 999999)
@@ -820,6 +949,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                     # 插入新记录
                     success = insert_email_record(email, device_id, equipment_type, alarm_num, real_ip)
                     if success:
+                        # 获取设备信息用于发送庆祝邮件
+                        device_info = get_device_info(device_id)
+                        # 发送注册庆祝邮件
+                        send_celebration_email(email, device_id, device_info)
+                        
                         response_data = {
                             "code": 200,
                             "set_client_mode": "wait_user_verifi"
@@ -857,6 +991,11 @@ class RequestHandler(BaseHTTPRequestHandler):
                             # 既没有冷却期，也没有活跃订阅，可以插入新记录
                             success = insert_email_record(email, device_id, equipment_type, alarm_num, real_ip)
                             if success:
+                                # 获取设备信息用于发送庆祝邮件
+                                device_info = get_device_info(device_id)
+                                # 发送注册庆祝邮件
+                                send_celebration_email(email, device_id, device_info)
+                                
                                 response_data = {
                                     "code": 200,
                                     "set_client_mode": "wait_user_verifi"
