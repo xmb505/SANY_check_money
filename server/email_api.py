@@ -55,10 +55,11 @@ def create_connection_pool():
                 password=DB_PASSWORD,
                 database=DB_NAME,
                 charset='utf8mb4',
-                connect_timeout=5,
-                read_timeout=5,
-                write_timeout=5,
-                autocommit=True
+                connect_timeout=30,
+                read_timeout=30,
+                write_timeout=30,
+                autocommit=True,
+                init_command='SET SESSION sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"'
             )
             connection_pool.put(conn)
         except Exception as e:
@@ -72,7 +73,8 @@ def close_all_connections():
         while not connection_pool.empty():
             try:
                 conn = connection_pool.get_nowait()
-                conn.close()
+                if conn:
+                    conn.close()
             except:
                 pass
 
@@ -86,24 +88,49 @@ create_connection_pool()
 def get_db_connection():
     # 获取连接池中的连接
     try:
-        conn = connection_pool.get(timeout=5)
+        conn = connection_pool.get(timeout=10)
         print("[INFO] 从连接池获取数据库连接")
+        # 检查连接是否有效
+        try:
+            conn.ping(reconnect=True)
+        except Exception as e:
+            print(f"[WARN] 连接已失效，创建新连接: {str(e)}")
+            # 连接失效，创建新连接
+            conn = pymysql.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                charset='utf8mb4',
+                connect_timeout=30,
+                read_timeout=30,
+                write_timeout=30,
+                autocommit=True,
+                init_command='SET SESSION sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"'
+            )
         return conn
     except:
         print("[WARN] 连接池获取连接超时，创建新连接")
         # 如果无法从连接池获取连接，创建新连接
-        return pymysql.connect(
-            host=DB_HOST,
-            port=DB_PORT,
-            user=DB_USER,
-            password=DB_PASSWORD,
-            database=DB_NAME,
-            charset='utf8mb4',
-            connect_timeout=5,
-            read_timeout=5,
-            write_timeout=5,
-            autocommit=True
-        )
+        try:
+            return pymysql.connect(
+                host=DB_HOST,
+                port=DB_PORT,
+                user=DB_USER,
+                password=DB_PASSWORD,
+                database=DB_NAME,
+                charset='utf8mb4',
+                connect_timeout=30,
+                read_timeout=30,
+                write_timeout=30,
+                autocommit=True,
+                init_command='SET SESSION sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"'
+            )
+        except Exception as e:
+            print(f"[ERROR] 创建新连接失败: {str(e)}")
+            traceback.print_exc()
+            return None
 
 # 释放数据库连接
 def release_db_connection(conn):
@@ -111,28 +138,18 @@ def release_db_connection(conn):
         # 检查连接是否有效
         conn.ping(reconnect=True)
         # 将连接放回连接池
-        connection_pool.put(conn)
+        if not connection_pool.full():
+            connection_pool.put(conn)
+        else:
+            # 如果连接池已满，关闭连接
+            conn.close()
         print("[INFO] 数据库连接已返回连接池")
     except Exception as e:
-        print(f"[WARN] 连接无效，创建新连接替换: {str(e)}")
-        # 连接无效，创建新连接替换
+        print(f"[WARN] 连接无效，连接已关闭: {str(e)}")
         try:
-            new_conn = pymysql.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                database=DB_NAME,
-                charset='utf8mb4',
-                connect_timeout=5,
-                read_timeout=5,
-                write_timeout=5,
-                autocommit=True
-            )
-            connection_pool.put(new_conn)
-        except Exception as e:
-            print(f"[ERROR] 创建替换连接失败: {str(e)}")
-            traceback.print_exc()
+            conn.close()
+        except:
+            pass
 
 # 保持向后兼容的别名
 connect_db = get_db_connection
@@ -165,9 +182,13 @@ def check_device_exists(device_id):
             sql = "SELECT id, equipmentType FROM device WHERE id = %s"
             cursor.execute(sql, (str(device_id),))
             result = cursor.fetchone()
-            return result is not None, result[1] if result else None
+            if result:
+                return True, result[1]
+            else:
+                return False, None
     except Exception as e:
         print(f"[ERROR] 检查设备存在性时出错: {str(e)}")
+        traceback.print_exc()
         return False, None
     finally:
         release_db_connection(conn)
@@ -488,12 +509,8 @@ def send_verification_email(email, verifi_code, device_info):
                 'reply_to': config.get('aoksender', 'reply_to', fallback=None),
                 'alias': config.get('aoksender', 'alias', fallback='新毛云'),
                 'attachment': config.get('aoksender', 'attachment', fallback=None),
-<<<<<<< HEAD
                 'verifi_code_field': config.get('aoksender', 'verifi_code', fallback='code'),
                 'verifi_email_statu_field': config.get('aoksender', 'verifi_email_statu', fallback='email_mode')
-=======
-                'verifi_code_field': config.get('aoksender', 'verifi_code', fallback='code')
->>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
             }
             
             if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
@@ -503,10 +520,7 @@ def send_verification_email(email, verifi_code, device_info):
             template_data = {
                 'email': email,
                 aoksend_config['verifi_code_field']: verifi_code,  # 使用配置的字段名
-<<<<<<< HEAD
                 aoksend_config['verifi_email_statu_field']: '注册',  # 使用配置的字段名发送操作类型
-=======
->>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
                 'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
                 'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
                 'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
@@ -567,12 +581,8 @@ def send_change_email(email, change_code, device_info):
                 'reply_to': config.get('aoksender', 'reply_to', fallback=None),
                 'alias': config.get('aoksender', 'alias', fallback='新毛云'),
                 'attachment': config.get('aoksender', 'attachment', fallback=None),
-<<<<<<< HEAD
                 'change_code_field': config.get('aoksender', 'change_code', fallback='code'),
                 'change_email_statu_field': config.get('aoksender', 'change_email_statu', fallback='email_mode')
-=======
-                'change_code_field': config.get('aoksender', 'change_code', fallback='code')
->>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
             }
             
             if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
@@ -582,10 +592,7 @@ def send_change_email(email, change_code, device_info):
             template_data = {
                 'email': email,
                 aoksend_config['change_code_field']: change_code,  # 使用配置的字段名
-<<<<<<< HEAD
                 aoksend_config['change_email_statu_field']: '解绑',  # 使用配置的字段名发送操作类型
-=======
->>>>>>> 726a43ec18044570046bd98e250319ab18f23b3d
                 'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
                 'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
                 'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
@@ -650,10 +657,11 @@ def insert_email_record(email, device_id, equipment_type, alarm_num, ip_address)
             life_end_time = current_time + timedelta(days=365)       # 生命周期1年
             
             # 先插入记录，包含所有必要字段
+            # 注意：verifi_end_time 和 life_end_time 是生成列，不由INSERT语句指定
             sql = """INSERT INTO email 
-                    (email, uuid, device_id, verifi_code, ip_address, alarm_num, equipment_type, change_code, verifi_end_time, life_end_time) 
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
-            cursor.execute(sql, (email, uuid_value, str(device_id), verifi_code, ip_address, alarm_num, equipment_type, change_code, verifi_end_time, life_end_time))
+                    (email, uuid, device_id, verifi_code, ip_address, alarm_num, equipment_type, change_code) 
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"""
+            cursor.execute(sql, (email, uuid_value, str(device_id), verifi_code, ip_address, alarm_num, equipment_type, change_code))
             
             # 获取设备信息
             device_info = get_device_info(device_id)

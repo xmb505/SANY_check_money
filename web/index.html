@@ -13,10 +13,15 @@
     <div class="container">
         <!-- 顶部导航栏 -->
         <div class="header">
-            <!-- 左侧选项卡 -->
-            <div class="tabs">
-                <div class="tab active" data-tab="data-count">数据量</div>
-                <div class="tab" data-tab="data-mode">数据解析</div>
+            <!-- 左侧返回首页按钮和选项卡 -->
+            <div class="header-left">
+                <button class="home-btn" id="home-btn" title="返回首页">
+                    🏠
+                </button>
+                <div class="tabs">
+                    <div class="tab active" data-tab="data-count">数据量</div>
+                    <div class="tab" data-tab="data-mode">数据解析</div>
+                </div>
             </div>
             
             <!-- 右侧搜索框 -->
@@ -67,8 +72,10 @@
         <!-- 页脚区域 -->
         <div class="footer-content-container">
             <div class="footer-content-wrapper">
-                <p>项目源码: <a href="https://github.com/xmb505/SANY_check_money" target="_blank">GitHub仓库</a> | 
-                   个人博客: <a href="https://blog.your_mysql_host" target="_blank">新毛博客</a></p>
+                <p>项目源码: <a href="https://github.com/xmb505/SANY_check_money" target="_blank">GitHub仓库</a></p>
+                <p>个人博客: <a href="https://blog.your_mysql_host" target="_blank">新毛博客</a></p>
+                <p><a href="https://icp.gov.moe/?keyword=20240505" target="_blank">萌ICP备20240505号</a> | <a href="https://beian.miit.gov.cn/" target="_blank">湘ICP备2024053841号</a></p>
+                <p>免费预警邮件数量: <span id="email-balance">加载中...</span></p>
             </div>
         </div>
     </div>

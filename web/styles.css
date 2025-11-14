@@ -1,4 +1,55 @@
 /* 全局样式 */
+:root {
+    --bg-color: #f5f5f5;
+    --text-color: #333;
+    --container-bg: #fff;
+    --header-bg: #fff;
+    --tab-bg: #e0e0e0;
+    --tab-active-bg: #2196F3;
+    --search-input-bg: #fff;
+    --search-input-border: #ddd;
+    --search-btn-bg: #4CAF50;
+    --search-btn-hover-bg: #45a049;
+    --tab-content-bg: #fff;
+    --mode-btn-bg: #e0e0e0;
+    --mode-btn-active-bg: #2196F3;
+    --main-content-bg: #fff;
+    --card-bg: #fafafa;
+    --card-border: #ddd;
+    --card-header-border: #eee;
+    --card-type-electric-bg: #FFC107;
+    --card-type-electric-text: #333;
+    --card-type-water-bg: #2196F3;
+    --card-type-water-text: white;
+    --card-data-border: #eee;
+    --toggle-details-btn-bg: #4CAF50;
+    --toggle-details-btn-hover-bg: #45a049;
+    --modal-content-bg: #fff;
+    --detail-info-border: #eee;
+    --data-table-header-bg: #f5f5f5;
+    --data-table-border: #ddd;
+    --count-btn-bg: #e0e0e0;
+    --count-btn-active-bg: #2196F3;
+    --custom-count-input-bg: #fff;
+    --custom-count-input-border: #ddd;
+    --set-custom-count-bg: #4CAF50;
+    --set-custom-count-hover-bg: #45a049;
+    --home-btn-bg: #e0e0e0;
+    --home-btn-border: #ddd;
+    --home-btn-hover-bg: #d5d5d5;
+    --status-on-bg: #4CAF50;
+    --status-off-bg: #F44336;
+    --subscribe-btn-bg: #2196F3;
+    --subscribe-btn-hover-bg: #1976D2;
+    --unsubscribe-btn-bg: #f44336;
+    --unsubscribe-btn-hover-bg: #d32f2f;
+    --form-input-bg: #fff;
+    --form-input-border: #ddd;
+    --form-input-focus-border: #2196F3;
+    --form-input-focus-shadow: rgba(33, 150, 243, 0.2);
+    --footer-bg: #fff;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -7,8 +58,8 @@
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f5f5f5;
-    color: #333;
+    background-color: var(--bg-color);
+    color: var(--text-color);
     transition: background-color 0.3s, color 0.3s;
 }
 
@@ -18,129 +69,225 @@ body.with-background {
 
 /* 暗色主题 */
 body.dark-mode {
-    background-color: #1a1a1a;
-    color: #f0f0f0;
+    --bg-color: #1a1a1a;
+    --text-color: #f0f0f0;
+    --container-bg: #2d2d2d;
+    --header-bg: #333;
+    --tab-bg: #444;
+    --tab-active-bg: #2196F3;
+    --search-input-bg: #444;
+    --search-input-border: #555;
+    --search-btn-bg: #4CAF50;
+    --search-btn-hover-bg: #45a049;
+    --tab-content-bg: #333;
+    --mode-btn-bg: #444;
+    --mode-btn-active-bg: #2196F3;
+    --main-content-bg: #333;
+    --card-bg: #444;
+    --card-border: #555;
+    --card-header-border: #555;
+    --card-type-electric-bg: #FFC107;
+    --card-type-electric-text: #333;
+    --card-type-water-bg: #2196F3;
+    --card-type-water-text: white;
+    --card-data-border: #555;
+    --toggle-details-btn-bg: #4CAF50;
+    --toggle-details-btn-hover-bg: #45a049;
+    --modal-content-bg: #333;
+    --detail-info-border: #555;
+    --data-table-header-bg: #444;
+    --data-table-border: #555;
+    --count-btn-bg: #444;
+    --count-btn-active-bg: #2196F3;
+    --custom-count-input-bg: #444;
+    --custom-count-input-border: #555;
+    --set-custom-count-bg: #4CAF50;
+    --set-custom-count-hover-bg: #45a049;
+    --home-btn-bg: #444;
+    --home-btn-border: #555;
+    --home-btn-hover-bg: #555;
+    --form-input-bg: #444;
+    --form-input-border: #555;
+    --form-input-focus-border: #64B5F6;
+    --form-input-focus-shadow: rgba(100, 181, 246, 0.2);
+    --footer-bg: #333;
 }
 
-body.dark-mode .container {
-    background-color: #2d2d2d;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+body.dark-mode {
+    background-color: var(--bg-color);
+    color: var(--text-color);
 }
 
-body.dark-mode .header {
-    background-color: #333;
-    color: #f0f0f0;
+.container {
+    background-color: var(--container-bg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
 }
 
-body.dark-mode .tab {
-    background-color: #444;
-    color: #f0f0f0;
+.header {
+    background-color: var(--header-bg);
+    color: var(--text-color);
 }
 
-body.dark-mode .tab.active {
-    background-color: #2196F3;
+.tab {
+    background-color: var(--tab-bg);
+    color: var(--text-color);
 }
 
-body.dark-mode #search-input {
-    background-color: #444;
-    color: #f0f0f0;
-    border-color: #555;
+.tab.active {
+    background-color: var(--tab-active-bg);
 }
 
-body.dark-mode #search-btn {
-    background-color: #4CAF50;
+#search-input {
+    background-color: var(--search-input-bg);
+    color: var(--text-color);
+    border-color: var(--search-input-border);
 }
 
-body.dark-mode .tab-content {
-    background-color: #333;
-    color: #f0f0f0;
+#search-btn {
+    background-color: var(--search-btn-bg);
 }
 
-body.dark-mode .mode-btn {
-    background-color: #444;
-    color: #f0f0f0;
+#search-btn:hover {
+    background-color: var(--search-btn-hover-bg);
 }
 
-body.dark-mode .mode-btn.active {
-    background-color: #2196F3;
+.tab-content {
+    background-color: var(--tab-content-bg);
+    color: var(--text-color);
 }
 
-body.dark-mode .main-content {
-    background-color: #333;
+.mode-btn {
+    background-color: var(--mode-btn-bg);
+    color: var(--text-color);
 }
 
-body.dark-mode .card {
-    background-color: #444;
-    border-color: #555;
-    color: #f0f0f0;
+.mode-btn.active {
+    background-color: var(--mode-btn-active-bg);
 }
 
-body.dark-mode .card-header {
-    border-bottom-color: #555;
+.main-content {
+    background-color: var(--main-content-bg);
 }
 
-body.dark-mode .card-type.electric {
-    background-color: #FFC107;
-    color: #333;
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-color);
 }
 
-body.dark-mode .card-type.water {
-    background-color: #2196F3;
-    color: white;
+.card-header {
+    border-bottom-color: var(--card-header-border);
 }
 
-body.dark-mode .card-info-item {
-    border-bottom-color: #555;
+.card-type.electric {
+    background-color: var(--card-type-electric-bg);
+    color: var(--card-type-electric-text);
 }
 
-body.dark-mode .toggle-details-btn {
-    background-color: #4CAF50;
+.card-type.water {
+    background-color: var(--card-type-water-bg);
+    color: var(--card-type-water-text);
 }
 
-body.dark-mode .modal-content {
-    background-color: #333;
-    color: #f0f0f0;
+.card-data-item {
+    border-bottom-color: var(--card-data-border);
 }
 
-body.dark-mode .detail-info-item {
-    border-bottom-color: #555;
+.toggle-details-btn {
+    background-color: var(--toggle-details-btn-bg);
 }
 
-body.dark-mode .data-table th {
-    background-color: #444;
+.toggle-details-btn:hover {
+    background-color: var(--toggle-details-btn-hover-bg);
 }
 
-body.dark-mode .data-table th,
-body.dark-mode .data-table td {
-    border-bottom-color: #555;
+.modal-content {
+    background-color: var(--modal-content-bg);
+    color: var(--text-color);
 }
 
-/* 暗色模式下的图表字体颜色 */
-body.dark-mode .chart-container {
-    color: #ffffff;
+.detail-info-item {
+    border-bottom-color: var(--detail-info-border);
 }
 
-body.dark-mode .mini-chart {
-    color: #ffffff;
+.data-table th {
+    background-color: var(--data-table-header-bg);
 }
 
-body.dark-mode .count-btn {
-    background-color: #444;
-    color: #f0f0f0;
+.data-table th,
+.data-table td {
+    border-bottom-color: var(--data-table-border);
 }
 
-body.dark-mode .count-btn.active {
-    background-color: #2196F3;
+.count-btn {
+    background-color: var(--count-btn-bg);
+    color: var(--text-color);
 }
 
-body.dark-mode #custom-count-input {
-    background-color: #444;
-    color: #f0f0f0;
-    border-color: #555;
+.count-btn.active {
+    background-color: var(--count-btn-active-bg);
 }
 
-body.dark-mode #set-custom-count {
-    background-color: #4CAF50;
+#custom-count-input {
+    background-color: var(--custom-count-input-bg);
+    color: var(--text-color);
+    border-color: var(--custom-count-input-border);
+}
+
+#set-custom-count {
+    background-color: var(--set-custom-count-bg);
+}
+
+#set-custom-count:hover {
+    background-color: var(--set-custom-count-hover-bg);
+}
+
+.home-btn {
+    background-color: var(--home-btn-bg);
+    border-color: var(--home-btn-border);
+}
+
+.home-btn:hover {
+    background-color: var(--home-btn-hover-bg);
+}
+
+.status-on {
+    background-color: var(--status-on-bg);
+}
+
+.status-off {
+    background-color: var(--status-off-bg);
+}
+
+.subscribe-btn {
+    background-color: var(--subscribe-btn-bg);
+}
+
+.subscribe-btn:hover {
+    background-color: var(--subscribe-btn-hover-bg);
+}
+
+#unsubscribe-btn {
+    background-color: var(--unsubscribe-btn-bg);
+}
+
+#unsubscribe-btn:hover {
+    background-color: var(--unsubscribe-btn-hover-bg);
+}
+
+.form-group input {
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+    border-color: var(--form-input-border);
+}
+
+.form-group input:focus {
+    border-color: var(--form-input-focus-border);
+    box-shadow: 0 0 0 2px var(--form-input-focus-shadow);
+}
+
+.footer-content-container {
+    background-color: var(--footer-bg);
 }
 
 .container {
@@ -149,6 +296,7 @@ body.dark-mode #set-custom-count {
     padding: 20px;
     border-radius: 15px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    background-color: var(--container-bg);
 }
 
 /* 顶部导航栏 */
@@ -156,11 +304,51 @@ body.dark-mode #set-custom-count {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: #fff;
+    background-color: var(--header-bg);
     padding: 15px 20px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
+}
+
+/* 左侧内容（首页按钮和选项卡） */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 返回首页按钮 */
+.home-btn {
+    width: 40px;
+    height: 40px;
+    padding: 5px;
+    background-color: var(--home-btn-bg);
+    border: 1px solid var(--home-btn-border);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s, transform 0.2s;
+    min-width: 40px; /* 确保最小宽度与选项卡按钮一致 */
+}
+
+.home-btn:hover {
+    background-color: #d5d5d5;
+    transform: scale(1.1);
+}
+
+/* 暗色主题下的返回首页按钮 */
+body.dark-mode .home-btn {
+    background-color: #444;
+    border-color: #555;
+    color: #f0f0f0;
+}
+
+body.dark-mode .home-btn:hover {
+    background-color: #555;
 }
 
 /* 选项卡 */
@@ -171,7 +359,7 @@ body.dark-mode #set-custom-count {
 
 .tab {
     padding: 10px 20px;
-    background-color: #e0e0e0;
+    background-color: var(--tab-bg);
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
@@ -190,14 +378,14 @@ body.dark-mode #set-custom-count {
 
 #search-input {
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--search-input-border);
     border-radius: 5px;
     width: 250px;
 }
 
 #search-btn {
     padding: 10px 20px;
-    background-color: #4CAF50;
+    background-color: var(--search-btn-bg);
     color: white;
     border: none;
     border-radius: 5px;
@@ -206,12 +394,12 @@ body.dark-mode #set-custom-count {
 }
 
 #search-btn:hover {
-    background-color: #45a049;
+    background-color: var(--search-btn-hover-bg);
 }
 
 /* 选项卡内容 */
 .tab-content {
-    background-color: #fff;
+    background-color: var(--tab-content-bg);
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-bottom: 20px;
@@ -246,7 +434,7 @@ body.dark-mode #set-custom-count {
 
 .count-btn {
     padding: 8px 15px;
-    background-color: #e0e0e0;
+    background-color: var(--count-btn-bg);
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -270,14 +458,14 @@ body.dark-mode #set-custom-count {
 
 #custom-count-input {
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--custom-count-input-border);
     border-radius: 5px;
     width: 120px;
 }
 
 #set-custom-count {
     padding: 8px 15px;
-    background-color: #4CAF50;
+    background-color: var(--set-custom-count-bg);
     color: white;
     border: none;
     border-radius: 5px;
@@ -286,7 +474,7 @@ body.dark-mode #set-custom-count {
 }
 
 #set-custom-count:hover {
-    background-color: #45a049;
+    background-color: var(--set-custom-count-hover-bg);
 }
 
 /* 模式按钮 */
@@ -297,7 +485,7 @@ body.dark-mode #set-custom-count {
 
 .mode-btn {
     padding: 10px 20px;
-    background-color: #e0e0e0;
+    background-color: var(--mode-btn-bg);
     border: none;
     border-radius: 5px;
     cursor: pointer;
@@ -315,7 +503,7 @@ body.dark-mode #set-custom-count {
 
 /* 主要内容区域 */
 .main-content {
-    background-color: #fff;
+    background-color: var(--main-content-bg);
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     padding: 20px;
@@ -330,10 +518,10 @@ body.dark-mode #set-custom-count {
 
 /* 卡片样式 */
 .card {
-    border: 1px solid #ddd;
+    border: 1px solid var(--card-border);
     border-radius: 8px;
     padding: 20px;
-    background-color: #fafafa;
+    background-color: var(--card-bg);
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s, box-shadow 0.3s;
     display: flex;
@@ -352,7 +540,7 @@ body.dark-mode #set-custom-count {
     align-items: center;
     margin-bottom: 15px;
     padding-bottom: 10px;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--card-header-border);
     min-height: 24px;
 }
 
@@ -427,7 +615,7 @@ body.dark-mode #set-custom-count {
     display: flex;
     justify-content: space-between;
     padding: 5px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--card-data-border);
 }
 
 .card-data-label {
@@ -440,7 +628,7 @@ body.dark-mode #set-custom-count {
 
 .toggle-details-btn {
     padding: 10px;
-    background-color: #4CAF50;
+    background-color: var(--toggle-details-btn-bg);
     color: white;
     border: none;
     border-radius: 5px;
@@ -484,7 +672,7 @@ body.dark-mode #set-custom-count {
 
 .subscribe-btn {
     padding: 10px;
-    background-color: #2196F3;
+    background-color: var(--subscribe-btn-bg);
     color: white;
     border: none;
     border-radius: 5px;
@@ -514,7 +702,7 @@ body.dark-mode #set-custom-count {
 }
 
 .modal-content {
-    background-color: #fff;
+    background-color: var(--modal-content-bg);
     margin: 5% auto;
     padding: 20px;
     border-radius: 8px;
@@ -630,11 +818,11 @@ body.dark-mode #set-custom-count {
 .form-group input {
     width: 100%;
     padding: 10px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--form-input-border);
     border-radius: 5px;
     font-size: 16px;
-    background-color: #fff;
-    color: #333;
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
 }
 
 .form-group input:focus {
@@ -649,7 +837,7 @@ body.dark-mode #set-custom-count {
 
 .form-group button {
     padding: 12px 24px;
-    background-color: #4CAF50;
+    background-color: var(--set-custom-count-bg);
     color: white;
     border: none;
     border-radius: 5px;
@@ -664,7 +852,7 @@ body.dark-mode #set-custom-count {
 
 #unsubscribe-btn {
     padding: 12px 24px;
-    background-color: #f44336; /* 红色背景 */
+    background-color: var(--unsubscribe-btn-bg); /* 红色背景 */
     color: white;
     border: none;
     border-radius: 5px;
@@ -688,7 +876,7 @@ body.dark-mode #set-custom-count {
     justify-content: space-between;
     margin-bottom: 10px;
     padding: 5px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--detail-info-border);
 }
 
 .detail-info-label {
@@ -710,11 +898,11 @@ body.dark-mode #set-custom-count {
 .data-table td {
     padding: 8px;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--data-table-border);
 }
 
 .data-table th {
-    background-color: #f5f5f5;
+    background-color: var(--data-table-header-bg);
     font-weight: bold;
 }
 
@@ -754,7 +942,7 @@ body.dark-mode #set-custom-count {
 
 /* 页脚样式 */
 .footer-content-container {
-    background-color: #fff;
+    background-color: var(--footer-bg);
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     margin-top: 20px;
@@ -765,6 +953,10 @@ body.dark-mode #set-custom-count {
     text-align: center;
 }
 
+.footer-content-wrapper p {
+    margin: 5px 0;
+}
+
 .footer-content-wrapper a {
     color: #2196F3;
     text-decoration: none;
@@ -772,16 +964,6 @@ body.dark-mode #set-custom-count {
 
 .footer-content-wrapper a:hover {
     text-decoration: underline;
-}
-
-/* 响应式页脚 - 当屏幕较小时，链接垂直排列 */
-@media (max-width: 480px) {
-    .footer-content-wrapper p {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        align-items: center;
-    }
 }
 
 /* 暗色主题页脚 */
@@ -803,4 +985,14 @@ body.dark-mode .form-group input {
 body.dark-mode .form-group input:focus {
     border-color: #64B5F6;
     box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+/* 邮件余额显示样式 */
+#email-balance {
+    font-weight: bold;
+    color: #2196F3; /* 蓝色高亮显示 */
+}
+
+body.dark-mode #email-balance {
+    color: #64B5F6; /* 暗色模式下的蓝色 */
 }

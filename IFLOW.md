@@ -2,7 +2,7 @@
 
 ## 项目概述
 
-这是一个用于自动查询三一工学院水电费信息的Python脚本项目，项目名为`your_database_name_money`。该项目通过模拟学校网站的登录和数据查询过程，实现了自动化的水电费信息获取功能，并支持邮件预警功能和Web可视化界面。
+这是一个用于自动查询三一工学院水电费信息的Python脚本项目，项目名为`sany_check_money`。该项目通过模拟学校网站的登录和数据查询过程，实现了自动化的水电费信息获取功能，并支持邮件预警功能和Web可视化界面。
 
 主要功能包括：
 
@@ -26,6 +26,9 @@
 18. **响应式设计**：Web界面支持响应式布局，在不同设备上都能良好显示
 19. **文本溢出处理**：优化了设备名称过长时的显示效果，使用省略号代替换行
 20. **邮件订阅和解绑系统**：新增完整的邮件订阅和解绑功能，包含验证码验证机制和用户友好的前端界面
+21. **返回首页按钮**：Web界面添加了返回首页按钮，方便用户从搜索结果返回首页
+22. **Aoksend余额查询服务**：新增独立的Aoksend余额查询服务，可查询API账户余额
+23. **邮件余额显示功能**：在Web界面页脚中实时显示剩余邮件数量，提升用户体验
 
 ## 核心功能模块
 
@@ -122,6 +125,8 @@
 - 支持设备详细信息查看
 - 支持响应式设计，在不同设备上都能良好显示
 - 优化了设备名称过长时的显示效果，使用省略号代替换行
+- **新增：添加了返回首页按钮**，点击可清空搜索框并返回首页数据
+- **新增：邮件余额显示功能**，在页脚实时显示剩余邮件数量
 
 ### 12. 高性能RESTful API服务模块 (`server/server.py`)
 
@@ -209,6 +214,50 @@
   - 邮箱格式验证
   - 防止验证码被后续错误覆盖的安全机制
 
+### 14. Aoksend余额查询服务模块 (`server/aokbalance_get.py`)
+
+- 提供独立的Aoksend API余额查询服务
+- 通过POST请求向Aoksend API发送app_key获取账户余额
+- 支持配置文件`server/aokbalance_get.ini`管理API参数
+- 通过GET请求返回Aoksend账户余额信息
+- 以服务器身份挂载后台，浏览器访问对应端口即可获取余额信息
+- 支持跨域访问（CORS）
+
+### 15. 邮件余额显示功能模块
+
+- 在Web界面页脚添加剩余邮件数量显示
+- 通过API调用获取Aoksend账户余额信息
+- 支持配置文件`web/config.js`中的`EMAIL_BALANCE_API_URL`配置项
+- 显示格式为：`{"message": "请求成功", "code": 200, "account": 24968}`
+- 在前端页脚中显示为"免费预警邮件数量: [数量]"
+- 提供错误处理机制，当API调用失败时显示"获取失败"
+- 使用JavaScript异步获取并显示数据
+- 支持亮色和暗色模式下的样式显示
+
+## 配置文件处理方式更新
+
+为了保护用户隐私并便于项目部署，项目采用了新的配置文件处理方式：
+
+1. **示例配置文件**：所有配置文件都提供了示例模板，文件名以`example_`开头
+2. **敏感信息保护**：实际配置文件包含敏感信息，已被添加到`.gitignore`文件中，不会被上传到版本控制系统
+3. **配置文件使用方法**：
+   - 复制示例配置文件并重命名为实际使用的文件名
+   - 根据实际环境修改配置文件中的参数
+   - 项目会自动忽略实际配置文件，确保敏感信息不会被上传
+
+### 配置文件列表
+
+- `config/mysql.ini`：数据库连接配置
+- `config/mail_setting.ini`：SMTP邮件发送配置
+- `config/aoksender.ini`：Aoksend API配置
+- `config/daemon.ini`：守护进程配置
+- `config/monitor_config.ini`：数据监控配置
+- `config/mail_texter.txt`：邮件模板文件
+- `server/server.ini`：Web后端API服务配置
+- `server/email_api.ini`：邮件订阅API配置
+- `server/aokbalance_get.ini`：Aoksend余额查询服务配置
+- `web/config.js`：Web前端配置
+
 ## 核心技术实现
 
 ### 签名算法详解
@@ -267,6 +316,26 @@
 - `remark`：异常备注
 - `unStandard`：非标准标记（0=标准，1=非标准）
 
+#### email表（邮箱订阅表）
+存储用户邮箱订阅信息，用于预警通知。
+
+字段说明：
+- `id`：自增主键
+- `email`：邮箱地址
+- `uuid`：唯一标识符
+- `device_id`：设备ID
+- `verifi_code`：验证验证码
+- `verifi_end_time`：验证验证码过期时间
+- `verifi_statu`：验证状态（0=未验证，1=已验证）
+- `life_end_time`：生命周期结束时间
+- `change_device_statu`：解绑状态（0=正常，1=已解绑）
+- `created_time`：创建时间
+- `updated_time`：更新时间
+- `ip_address`：IP地址
+- `alarm_num`：预警阈值
+- `equipment_type`：设备类型（0=电表，1=水表）
+- `change_code`：解绑验证码
+
 ### 高性能API实现
 
 #### 数据库连接池机制
@@ -310,6 +379,8 @@
 - `server/server.ini`：API服务配置文件
 - `server/email_api.py`：邮件订阅系统后端API（支持订阅、验证、解绑功能）
 - `server/email_api.ini`：邮件API服务配置文件
+- `server/aokbalance_get.py`：Aoksend余额查询服务
+- `server/aokbalance_get.ini`：Aoksend余额查询服务配置文件
 - `web/`：Web前端文件目录
   - `index.html`：Web界面主页面
   - `main.js`：Web界面主逻辑
@@ -480,6 +551,14 @@ python3 email_api.py
 
 该命令会启动邮件订阅系统API服务，默认监听8081端口。
 
+### 启动Aoksend余额查询服务
+```bash
+cd server
+python3 aokbalance_get.py
+```
+
+该命令会启动Aoksend余额查询服务，默认监听8082端口。
+
 ### 访问Web界面
 在浏览器中打开 `http://localhost:8080` 即可访问Web界面。
 
@@ -487,9 +566,9 @@ python3 email_api.py
 为提高安全性，可以创建只读用户：
 ```sql
 -- 创建只读用户
-CREATE USER 'your_database_name_viewer'@'%' IDENTIFIED BY 'secure_password';
+CREATE USER 'sany_check_viewer'@'%' IDENTIFIED BY 'secure_password';
 -- 授予只读权限
-GRANT SELECT ON your_database_name.* TO 'your_database_name_viewer'@'%';
+GRANT SELECT ON sany_check.* TO 'sany_check_viewer'@'%';
 -- 刷新权限
 FLUSH PRIVILEGES;
 ```
@@ -565,7 +644,7 @@ mysql_server = your_mysql_host
 mysql_port = 3306
 login_user = your_username
 login_passwd = your_password
-db_schema = your_database_name
+db_schema = sany_check
 
 [aoksender]
 # API地址(选填)
@@ -582,10 +661,30 @@ alias = 新毛云
 attachment =
 # 模板中验证码字段名
 verifi_code = code
+# 模板中用户注册操作的字段名
+verifi_email_statu = email_mode
 # 模板中解绑码字段名
 change_code = code
+# 模板中用户解绑操作的字段名
+change_email_statu = email_mode
 # 模板ID
-change_template_id = YOUR_TEMPLATE_ID_HERE
+change_template_id = YOUR_CHANGE_TEMPLATE_ID_HERE
+```
+
+### server/aokbalance_get.ini
+Aoksend余额查询服务配置文件，包含：
+- 服务器端口
+- Aoksend API地址
+- API密钥
+
+示例配置：
+```ini
+[server]
+port = 8082
+
+[aok]
+api_address = https://www.aoksend.com/index/api/check_account
+app_key = YOUR_APP_KEY_HERE
 ```
 
 ### config/daemon.ini
@@ -653,7 +752,7 @@ mysql_server = your_mysql_host
 mysql_port = 3306
 login_user = your_username
 login_passwd = your_password
-db_schema = your_database_name_money
+db_schema = sany_check_money
 
 [server]
 port = 8080
@@ -669,6 +768,7 @@ Web前端配置文件，包含：
 - 请求超时时间
 - 默认数据量和模式
 - 界面显示配置
+- **新增：邮件余额查询API地址配置**
 
 示例配置：
 ```javascript
@@ -679,6 +779,9 @@ window.DYNAMIC_CONFIG = {
     
     // 邮件API服务器地址和端口
     EMAIL_API_BASE_URL: 'http://192.168.1.3:8081',  // 使用http协议，因为邮件API服务器使用http
+    
+    // 剩余邮件查询API地址
+    EMAIL_BALANCE_API_URL: 'http://192.168.1.3:8082',  // Aoksend余额查询服务地址
     
     // 请求超时时间(毫秒)
     API_TIMEOUT: 5000,
@@ -756,7 +859,10 @@ window.DYNAMIC_CONFIG = {
 27. **完整的邮件订阅系统**：支持用户订阅、验证、解绑的完整生命周期管理
 28. **安全机制完善**：包含邮箱使用次数限制、验证码冷却期、解绑时间限制等多种安全措施
 29. **用户友好的前端界面**：包含订阅/解绑按钮、验证码输入界面、成功/失败反馈等
-30. **错误处理机制**：防止成功状态被后续错误信息覆盖的安全机制
+30. **错误处理机制**：防止成功状态被后续错误覆盖的安全机制
+31. **返回首页功能**：在搜索后提供一键返回首页的按钮，提升用户体验
+32. **Aoksend余额查询服务**：提供独立的API余额查询服务
+33. **邮件余额显示功能**：在Web界面页脚实时显示剩余邮件数量，提升用户体验
 
 ## 后续扩展建议
 
@@ -778,6 +884,7 @@ window.DYNAMIC_CONFIG = {
 16. **通知中心**：集成多种通知方式（短信、微信、推送等）
 17. **数据分析功能**：增加使用趋势分析、预测等功能
 18. **API文档**：提供完整的API文档和SDK
+19. **邮件余额显示功能**：在前端页面实时显示剩余邮件数量，提升用户体验
 
 ## 技术难点和解决方案
 
@@ -869,3 +976,19 @@ window.DYNAMIC_CONFIG = {
   - 添加邮箱使用次数限制、验证码冷却期等安全机制
   - 前端实现用户友好的界面和交互流程
   - 防止成功状态被后续错误覆盖的安全机制
+
+### 前端用户体验优化
+- **难点**：用户在搜索后没有明确的路径返回首页
+- **解决方案**：在前端添加返回首页按钮，点击后清空搜索框并重新加载首页数据
+- **优化**：确保按钮在亮色和暗色模式下都与现有界面风格保持一致
+
+### 邮件余额显示功能实现
+- **难点**：需要实时获取Aoksend API账户余额并在前端显示
+- **解决方案**：
+  - 创建`getEmailBalance()`函数，用于从API获取邮件余额
+  - 在Web界面页脚添加`<span id="email-balance">`元素用于显示余额
+  - 添加CSS样式确保余额在亮色和暗色模式下都能清晰显示
+  - 在页面初始化完成后自动调用API获取余额
+  - 添加错误处理，当API请求失败时显示"获取失败"
+  - 支持配置文件中的`EMAIL_BALANCE_API_URL`配置项
+  - API返回格式为`{"message": "请求成功", "code": 200, "account": 24968}`

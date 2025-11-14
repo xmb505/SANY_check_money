@@ -1,14 +1,53 @@
 // 全局变量
-let CONFIG = {}; // 初始化为空对象，稍后动态加载
+let CONFIG = {}; // 初始化为空对象, 稍后动态加载
 let currentDataCount = 5; // 默认值
 let currentMode = 'usage'; // 默认值
 let currentDeviceIds = [];
 let deviceDataCache = {};
 let isVerificationSuccessful = false; // 跟踪验证是否成功
+let miniCharts = {}; // 用于存储迷你图表实例
+let currentChart = null; // 用于存储当前显示的图表实例
+
+// 获取API地址
+function getApiUrl(apiType = 'main') {
+    if (apiType === 'email') {
+        return CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+    } else {
+        return CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
+    }
+}
+
+// 邮箱地址校验函数
+function isValidEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+}
+
+// 统一错误处理函数
+function handleError(error, context = '') {
+    console.error(`${context}时出错:`, error);
+    alert(`${context}失败,请检查网络连接或联系管理员.`);
+}
+
+// 销毁图表函数
+function destroyChart(chartId) {
+    if (miniCharts && miniCharts[chartId]) {
+        miniCharts[chartId].destroy();
+        delete miniCharts[chartId];
+    }
+}
+
+// 销毁主图表函数
+function destroyMainChart() {
+    if (currentChart) {
+        currentChart.destroy();
+        currentChart = null;
+    }
+}
 
 // 带超时的fetch函数
 async function fetchWithTimeout(url, options = {}) {
-    // 使用默认超时时间5000毫秒，如果配置已加载则使用配置的值
+    // 使用默认超时时间5000毫秒,如果配置已加载则使用配置的值
     const timeout = (CONFIG && CONFIG.API_TIMEOUT) ? CONFIG.API_TIMEOUT : 5000;
     
     const timeoutId = setTimeout(() => {
@@ -26,7 +65,42 @@ async function fetchWithTimeout(url, options = {}) {
     }
 }
 
-// 动态加载配置文件，避免缓存
+// 获取邮件余额
+async function getEmailBalance() {
+    try {
+        // 使用默认API地址,如果配置已加载则使用配置的地址
+        const apiUrl = CONFIG && CONFIG.EMAIL_BALANCE_API_URL ? CONFIG.EMAIL_BALANCE_API_URL : 'http://localhost:8082';
+        const response = await fetchWithTimeout(`${apiUrl}/`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.code === 200) {
+            const emailBalanceElement = document.getElementById('email-balance');
+            if (emailBalanceElement) {
+                emailBalanceElement.textContent = data.account;
+            }
+        } else {
+            throw new Error(`API返回错误: ${data.message || '未知错误'}`);
+        }
+    } catch (error) {
+        console.error('获取邮件余额失败:', error);
+        const emailBalanceElement = document.getElementById('email-balance');
+        if (emailBalanceElement) {
+            emailBalanceElement.textContent = '获取失败';
+        }
+    }
+}
+
+// 动态加载配置文件,避免缓存
 function loadConfig() {
     return new Promise((resolve, reject) => {
         // 使用时间戳避免缓存
@@ -39,7 +113,7 @@ function loadConfig() {
             if (window.DYNAMIC_CONFIG) {
                 CONFIG = window.DYNAMIC_CONFIG;
                 
-                // 设置默认值（如果配置中没有定义）
+                // 设置默认值(如果配置中没有定义)
                 if (CONFIG.DEFAULT_DATA_COUNT === undefined) CONFIG.DEFAULT_DATA_COUNT = 5;
                 if (CONFIG.DEFAULT_MODE === undefined) CONFIG.DEFAULT_MODE = 'usage';
                 if (CONFIG.API_TIMEOUT === undefined) CONFIG.API_TIMEOUT = 5000;
@@ -92,15 +166,15 @@ document.addEventListener('DOMContentLoaded', function() {
             // 初始化图表模态框
             initModal();
             
-            // 初始化订阅模态框
-            initSubscribeModal();
-            
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
-            cardsContainer.innerHTML = '<p>正在连接服务器，如果长时间没有反应，请联系管理员。</p>';
+            cardsContainer.innerHTML = '<p>正在连接服务器,如果长时间没有反应,请联系管理员.</p>';
             
             // 加载首页数据
             loadFirstScreenData();
+            
+            // 获取邮件余额
+            getEmailBalance();
         })
         .catch(error => {
             console.error('配置加载失败:', error);
@@ -132,16 +206,30 @@ document.addEventListener('DOMContentLoaded', function() {
             // 初始化图表模态框
             initModal();
             
-            // 初始化订阅模态框
-            initSubscribeModal();
-            
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
-            cardsContainer.innerHTML = '<p>正在连接服务器，如果长时间没有反应，请联系管理员。</p>';
+            cardsContainer.innerHTML = '<p>正在连接服务器,如果长时间没有反应,请联系管理员.</p>';
             
             // 加载首页数据
             loadFirstScreenData();
+            
+            // 获取邮件余额
+            getEmailBalance();
         });
+});
+
+// 页面卸载时清理资源
+window.addEventListener('beforeunload', function() {
+    // 销毁所有迷你图表
+    if (miniCharts) {
+        Object.keys(miniCharts).forEach(chartId => {
+            destroyChart(chartId);
+        });
+        miniCharts = {};
+    }
+    
+    // 销毁主图表
+    destroyMainChart();
 });
 
 // 设置favicon
@@ -185,7 +273,7 @@ function setBackgroudImage() {
 function setContainerOpacity() {
     const container = document.querySelector('.container');
     if (container) {
-        // 使用默认透明度0.8，如果配置已加载则使用配置的值
+        // 使用默认透明度0.8,如果配置已加载则使用配置的值
         const opacity = CONFIG && CONFIG.CONTAINER_OPACITY !== undefined ? 
             Math.max(0, Math.min(1, CONFIG.CONTAINER_OPACITY)) : 0.8;
         container.style.backgroundColor = `rgba(255, 255, 255, ${opacity})`;
@@ -227,9 +315,9 @@ function checkSystemTheme() {
         }
 }
 
-// 更新背景图片透明度（处理主题切换）
+// 更新背景图片透明度(处理主题切换)
 function updateBackgroundOpacity() {
-    // 使用默认值，如果配置已加载则使用配置的值
+    // 使用默认值,如果配置已加载则使用配置的值
     const opacity = CONFIG && CONFIG.BACKGROUND_IMAGE_OPACITY !== undefined ? 
         Math.max(0, Math.min(1, CONFIG.BACKGROUND_IMAGE_OPACITY)) : 0.4;
     const blurRadius = CONFIG && CONFIG.BACKGROUND_BLUR_RADIUS !== undefined ? 
@@ -361,7 +449,7 @@ function initDataCountButtons() {
         if (customValue && customValue > 0 && customValue <= 1000) {
             currentDataCount = customValue;
             
-            // 更新激活按钮（如果没有匹配的预设按钮，则取消所有按钮的激活状态）
+            // 更新激活按钮(如果没有匹配的预设按钮,则取消所有按钮的激活状态)
             updateActiveButton(customValue);
             
             // 重新加载数据
@@ -455,6 +543,18 @@ function initSearch() {
             performSearch();
         }
     });
+    
+    // 监听返回首页按钮点击
+    const homeBtn = document.getElementById('home-btn');
+    if (homeBtn) {
+        homeBtn.addEventListener('click', function() {
+            // 清空搜索框
+            searchInput.value = '';
+            
+            // 加载首页数据
+            loadFirstScreenData();
+        });
+    }
 }
 
 // 执行搜索
@@ -467,31 +567,8 @@ function performSearch() {
     }
 }
 
-// 初始化图表模态框
+// 初始化模态框
 function initModal() {
-    const modals = document.querySelectorAll('.modal');
-    const closeBtns = document.querySelectorAll('.close');
-    
-    // 关闭模态框
-    closeBtns.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const modal = this.closest('.modal');
-            modal.style.display = 'none';
-        });
-    });
-    
-    // 点击模态框外部关闭
-    window.addEventListener('click', function(event) {
-        modals.forEach(modal => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        });
-    });
-}
-
-// 初始化订阅模态框
-function initSubscribeModal() {
     const modals = document.querySelectorAll('.modal');
     const closeBtns = document.querySelectorAll('.close');
     
@@ -518,9 +595,17 @@ function initSubscribeModal() {
         subscribeForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const email = document.getElementById('subscribe-email').value;
+            const emailInput = document.getElementById('subscribe-email');
+            const email = emailInput.value;
             const alarm = parseInt(document.getElementById('subscribe-alarm').value);
             const deviceData = subscribeForm.dataset.deviceData ? JSON.parse(subscribeForm.dataset.deviceData) : null;
+            
+            // 检查邮箱是否为空
+            if (!email) {
+                // 显示浏览器默认的验证提示
+                emailInput.reportValidity();
+                return;
+            }
             
             if (deviceData) {
                 submitSubscription(email, alarm, deviceData);
@@ -534,8 +619,16 @@ function initSubscribeModal() {
         unsubscribeBtn.addEventListener('click', function(e) {
             e.preventDefault();
             
-            const email = document.getElementById('subscribe-email').value;
+            const emailInput = document.getElementById('subscribe-email');
+            const email = emailInput.value;
             const deviceData = subscribeForm.dataset.deviceData ? JSON.parse(subscribeForm.dataset.deviceData) : null;
+            
+            // 检查邮箱是否为空
+            if (!email) {
+                // 显示浏览器默认的验证提示
+                emailInput.reportValidity();
+                return;
+            }
             
             if (deviceData) {
                 submitUnsubscribe(email, deviceData);
@@ -595,8 +688,7 @@ function initSubscribeModal() {
 // 加载首页数据
 async function loadFirstScreenData() {
     try {
-        // 使用默认API地址，如果配置已加载则使用配置的地址
-        const apiUrl = CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
+        const apiUrl = getApiUrl('main');
         const response = await fetchWithTimeout(`${apiUrl}/?mode=first_screen`);
         const data = await response.json();
         
@@ -610,7 +702,7 @@ async function loadFirstScreenData() {
             console.error('加载首页数据失败:', data);
         }
     } catch (error) {
-        console.error('加载首页数据时出错:', error);
+        handleError(error, '加载首页数据');
     }
 }
 
@@ -644,16 +736,19 @@ async function loadDeviceDataForIds(deviceIds, totalNum = deviceIds.length) {
 
 // 加载单个设备的数据
 async function loadDeviceData(deviceId) {
-    // 使用默认API地址，如果配置已加载则使用配置的地址
-    const apiUrl = CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
-    const response = await fetchWithTimeout(`${apiUrl}/?mode=check&device_id=${deviceId}&data_num=${currentDataCount}`);
-    const data = await response.json();
-    
-    if (data.code === 200) {
-        // 保存到缓存
-        deviceDataCache[deviceId] = data;
-    } else {
-        console.error(`获取设备 ${deviceId} 数据失败:`, data);
+    try {
+        const apiUrl = getApiUrl('main');
+        const response = await fetchWithTimeout(`${apiUrl}/?mode=check&device_id=${deviceId}&data_num=${currentDataCount}`);
+        const data = await response.json();
+        
+        if (data.code === 200) {
+            // 保存到缓存
+            deviceDataCache[deviceId] = data;
+        } else {
+            console.error(`获取设备 ${deviceId} 数据失败:`, data);
+        }
+    } catch (error) {
+        handleError(error, `获取设备 ${deviceId} 数据`);
     }
 }
 
@@ -724,7 +819,7 @@ function createDeviceCard(deviceData) {
         showSubscribeModal(deviceData);
     });
     
-    // 初始时创建迷你图表，并添加点击事件
+    // 初始时创建迷你图表,并添加点击事件
     setTimeout(() => {
         createMiniChart(deviceData, card);
         const miniChart = card.querySelector('.mini-chart');
@@ -745,7 +840,7 @@ function calculateDisplayData(rows) {
     switch (currentMode) {
         case 'usage':
             // 用量模式: 新total_reading - 旧total_reading
-            // 只计算到倒数第二个数据，避免最后一个显示N/A
+            // 只计算到倒数第二个数据,避免最后一个显示N/A
             const usageData = [];
             for (let i = 0; i < rows.length - 1; i++) {
                 const currentReading = parseFloat(rows[i].total_reading);
@@ -761,8 +856,8 @@ function calculateDisplayData(rows) {
             
         case 'cost':
             // 用钱模式: 新remainingBalance - 旧remainingBalance
-            // 只计算到倒数第二个数据，避免最后一个显示N/A
-            // 只有负数才表示消耗，正数表示充值
+            // 只计算到倒数第二个数据,避免最后一个显示N/A
+            // 只有负数才表示消耗,正数表示充值
             const costData = [];
             for (let i = 0; i < rows.length - 1; i++) {
                 const currentBalance = parseFloat(rows[i].remainingBalance);
@@ -811,11 +906,9 @@ function calculateDisplayData(rows) {
 function createMiniChart(deviceData, card) {
     const ctx = card.querySelector('.mini-chart').getContext('2d');
     
-    // 销毁之前的图表实例（如果存在）
+    // 销毁之前的图表实例(如果存在)
     const chartId = deviceData.device_id;
-    if (window.miniCharts && window.miniCharts[chartId]) {
-        window.miniCharts[chartId].destroy();
-    }
+    destroyChart(chartId);
     
     // 准备图表数据
     const chartData = prepareMiniChartData(deviceData.rows);
@@ -873,10 +966,7 @@ function createMiniChart(deviceData, card) {
     });
     
     // 保存图表引用
-    if (!window.miniCharts) {
-        window.miniCharts = {};
-    }
-    window.miniCharts[chartId] = chart;
+    miniCharts[chartId] = chart;
 }
 
 // 准备迷你图表数据
@@ -955,14 +1045,12 @@ function showChart(deviceData) {
     // 准备图表数据
     const chartData = prepareChartData(deviceData.rows);
     
-    // 销毁之前的图表实例（如果存在）
-    if (window.currentChart) {
-        window.currentChart.destroy();
-    }
+    // 销毁之前的图表实例(如果存在)
+    destroyMainChart();
     
     // 创建新图表
     const ctx = canvas.getContext('2d');
-    window.currentChart = new Chart(ctx, {
+    currentChart = new Chart(ctx, {
         type: 'line',
         data: {
             labels: chartData.labels,
@@ -1032,9 +1120,14 @@ function showSubscribeModal(deviceData) {
 
 // 提交订阅
 async function submitSubscription(email, alarm, deviceData) {
+    // 邮箱地址校验
+    if (!isValidEmail(email)) {
+        alert('邮箱地址格式不正确，请输入有效的邮箱地址');
+        return;
+    }
+    
     try {
-        // 使用默认API地址，如果配置已加载则使用配置的地址
-        const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+        const apiUrl = getApiUrl('email');
         
         const response = await fetchWithTimeout(apiUrl, {
             method: 'POST',
@@ -1060,7 +1153,7 @@ async function submitSubscription(email, alarm, deviceData) {
                 // 显示验证码输入模态框
                 showVerificationModal(email, deviceData);
             } else {
-                alert('订阅成功！');
+                alert('订阅成功!');
                 // 关闭模态框
                 document.getElementById('subscribe-modal').style.display = 'none';
             }
@@ -1068,8 +1161,7 @@ async function submitSubscription(email, alarm, deviceData) {
             alert(`订阅失败: ${result.error_text || '未知错误'}`);
         }
     } catch (error) {
-        console.error('订阅请求失败:', error);
-        alert('订阅请求失败，请检查网络连接或联系管理员。');
+        handleError(error, '订阅请求');
     }
 }
 
@@ -1115,12 +1207,12 @@ function showVerificationModal(email, deviceData) {
 
 // 提交验证码
 async function submitVerificationCode(email, code, deviceData) {
-    // 如果验证已经成功，不再处理后续请求
+    // 如果验证已经成功,不再处理后续请求
     if (isVerificationSuccessful) {
         return;
     }
     try {
-        // 使用默认API地址，如果配置已加载则使用配置的地址
+        // 使用默认API地址,如果配置已加载则使用配置的地址
         const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
         
         const response = await fetchWithTimeout(apiUrl, {
@@ -1142,9 +1234,9 @@ async function submitVerificationCode(email, code, deviceData) {
         const verificationError = document.getElementById('verification-error');
         const verificationErrorText = document.getElementById('verification-error-text');
         
-        // 检查是否已经显示了庆祝符号，如果是则不再更新显示
+        // 检查是否已经显示了庆祝符号,如果是则不再更新显示
         if (verificationSuccess.style.display === 'block') {
-            return; // 遶止后续处理，保持庆祝符号显示
+            return; // 遶止后续处理,保持庆祝符号显示
         }
         
         if (result.code === 200) {
@@ -1175,21 +1267,26 @@ async function submitVerificationCode(email, code, deviceData) {
         const verificationError = document.getElementById('verification-error');
         const verificationErrorText = document.getElementById('verification-error-text');
         
-        // 如果验证已经成功，不再处理错误
+        // 如果验证已经成功,不再处理错误
         if (isVerificationSuccessful) {
-            return; // 阻止后续处理，保持庆祝符号显示
+            return; // 阻止后续处理,保持庆祝符号显示
         }
         
         verificationError.style.display = 'block';
-        verificationErrorText.textContent = '验证请求失败，请检查网络连接或联系管理员。';
+        verificationErrorText.textContent = '验证请求失败,请检查网络连接或联系管理员.';
     }
 }
 
 // 提交解绑请求
 async function submitUnsubscribe(email, deviceData) {
+    // 邮箱地址校验
+    if (!isValidEmail(email)) {
+        alert('邮箱地址格式不正确，请输入有效的邮箱地址');
+        return;
+    }
+    
     try {
-        // 使用默认API地址，如果配置已加载则使用配置的地址
-        const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
+        const apiUrl = getApiUrl('email');
         
         const response = await fetchWithTimeout(apiUrl, {
             method: 'POST',
@@ -1222,8 +1319,7 @@ async function submitUnsubscribe(email, deviceData) {
             alert('解绑失败: 未知错误');
         }
     } catch (error) {
-        console.error('解绑请求失败:', error);
-        alert('解绑请求失败，请检查网络连接或联系管理员。');
+        handleError(error, '解绑请求');
     }
 }
 
@@ -1267,7 +1363,7 @@ function showUnsubscribeVerificationModal(email, deviceData) {
 // 提交解绑验证码
 async function submitUnsubscribeVerificationCode(email, code, deviceData) {
     try {
-        // 使用默认API地址，如果配置已加载则使用配置的地址
+        // 使用默认API地址,如果配置已加载则使用配置的地址
         const apiUrl = CONFIG && CONFIG.EMAIL_API_BASE_URL ? CONFIG.EMAIL_API_BASE_URL : 'http://localhost:8081';
         
         const response = await fetchWithTimeout(apiUrl, {
@@ -1291,9 +1387,9 @@ async function submitUnsubscribeVerificationCode(email, code, deviceData) {
         const verificationError = document.getElementById('unsubscribe-verification-error');
         const verificationErrorText = document.getElementById('unsubscribe-verification-error-text');
         
-        // 检查是否已经显示了解绑成功符号，如果是则不再更新显示
+        // 检查是否已经显示了解绑成功符号,如果是则不再更新显示
         if (verificationSuccess.style.display === 'block') {
-            return; // 阻止后续处理，保持拜拜符号显示
+            return; // 阻止后续处理,保持拜拜符号显示
         }
         
         if (result.code === 200) {
@@ -1329,13 +1425,13 @@ async function submitUnsubscribeVerificationCode(email, code, deviceData) {
         const verificationError = document.getElementById('unsubscribe-verification-error');
         const verificationErrorText = document.getElementById('unsubscribe-verification-error-text');
         
-        // 如果解绑已经成功，不再处理错误
+        // 如果解绑已经成功,不再处理错误
         if (verificationSuccess.style.display === 'block') {
-            return; // 阻止后续处理，保持拜拜符号显示
+            return; // 阻止后续处理,保持拜拜符号显示
         }
         
         verificationError.style.display = 'block';
-        verificationErrorText.textContent = '解绑请求失败，请检查网络连接或联系管理员。';
+        verificationErrorText.textContent = '解绑请求失败,请检查网络连接或联系管理员.';
     }
 }
 
@@ -1490,18 +1586,18 @@ function getChartLabel() {
 async function searchDevices(keyword) {
     // 检查关键词长度
     if (keyword.length < 2) {
-        alert("请输入两个以上的字符。");
+        alert("请输入两个以上的字符.");
         return;
     }
     
     // 限制关键词长度为8个字符
     if (keyword.length > 8) {
-        alert("搜索关键词不能超过8个字符。");
+        alert("搜索关键词不能超过8个字符.");
         return;
     }
     
     try {
-        // 使用默认API地址，如果配置已加载则使用配置的地址
+        // 使用默认API地址,如果配置已加载则使用配置的地址
         const apiUrl = CONFIG && CONFIG.API_BASE_URL ? CONFIG.API_BASE_URL : 'http://localhost:8080';
         const response = await fetchWithTimeout(`${apiUrl}/?mode=search&key_word=${encodeURIComponent(keyword)}`);
         const data = await response.json();
@@ -1510,7 +1606,7 @@ async function searchDevices(keyword) {
             // 搜索关键词太短
             alert(data.error_talk);
         } else if (data.code === 200 && data.search_status === 0) {
-            // 搜索成功，创建设备ID列表
+            // 搜索成功,创建设备ID列表
             const deviceIds = data.rows.map(row => row.device_id);
             
             // 保存设备ID列表
@@ -1527,10 +1623,10 @@ async function searchDevices(keyword) {
             }
         } else {
             console.error('搜索设备失败:', data);
-            alert("搜索设备失败，请稍后重试。");
+            alert("搜索设备失败,请稍后重试.");
         }
     } catch (error) {
         console.error('搜索设备时出错:', error);
-        alert("搜索设备时出错，请检查网络连接。");
+        alert("搜索设备时出错,请检查网络连接.");
     }
 }

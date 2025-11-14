@@ -31,11 +31,20 @@ MANIFEST
 .DS_Store
 Thumbs.db
 
-# Configuration files with sensitive data
+# Configuration files with sensitive data - now using example files
 config/mysql.ini
 config/aoksender.ini
+config/daemon.ini
+config/mail_setting.ini
+config/monitor_config.ini
 server/email_api.ini
 server/aokbalance_get.ini
+server/server.ini
+web/config.js
+
+# Also ignore backup/working files
+config/*~
+server/*~
 
 # Log files
 *.log

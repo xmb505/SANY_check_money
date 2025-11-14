@@ -1,271 +1,205 @@
-# your_database_name_money
+# sany_check_money
 
 三一工学院自动查询水电费脚本
 
 ## 项目简介
 
-`your_database_name_money` 是一个用于自动查询三一工学院水电费信息的Python脚本项目。该项目通过模拟学校网站的登录和数据查询过程，实现了自动化的水电费信息获取功能，并支持邮件预警功能。
+`sany_check_money` 是一个功能强大的Python脚本项目，专为三一工学院学生设计，用于自动查询宿舍水电费信息。该项目通过模拟学校网站的登录和数据查询过程，实现了自动化的水电费信息获取，并提供邮件预警、数据库存储、Web可视化界面等丰富功能。
 
-## 功能特性
+对于经常忘记查询水电费余额而导致停电停水的同学，这个项目可以帮助你实时监控余额并在低于设定阈值时自动发送邮件提醒，让你及时充值，避免影响正常生活。
 
-- **自动登录**：通过 `login.py` 脚本实现用户自动登录
-- **数据查询**：通过 `get_data.py` 脚本获取水电费使用情况
-- **分页数据查询**：通过 `check_data.py` 脚本支持分页查询设备数据
-- **数据库存储**：通过 `data2sql.py` 脚本将查询数据存储到MySQL数据库
-- **守护进程**：通过 `daemon.sh` 脚本实现周期性自动执行任务
-- **签名算法**：实现了与学校网站完全一致的请求签名算法
-- **模块化设计**：支持命令行调用，返回标准JSON格式数据
+## 核心功能
+
+### 🔍 自动查询
+- **用户登录**：通过 `login.py` 脚本自动完成用户登录，获取必要凭证
+- **数据获取**：通过 `get_data.py` 脚本查询详细的水电费使用情况和当前余额
+- **分页查询**：通过 `check_data.py` 脚本支持分页查询所有设备数据
+
+### 📧 智能预警
+- **邮件通知**：支持两种邮件发送方式：
+  - 基于SMTP协议的传统邮件发送 (`mail_sender.py`)
+  - 基于Aoksend API的现代化邮件服务 (`monitor_aoksender.py`)
+- **后台监控**：通过守护进程脚本实现无人值守的周期性监控：
+  - SMTP方式：`monitor_daemon.py`
+  - Aoksend API方式：`monitor_aoksender.py`
+- **个性化配置**：支持自定义预警阈值、邮件模板和发送参数
+
+### 💾 数据持久化
+- **数据库存储**：通过 `data2sql.py` 脚本将查询到的数据存储到MySQL数据库
 - **数据去重**：自动检测并避免重复插入相同时间点的数据
-- **异常数据识别**：能够识别并标记异常数据（如`currentDealDate`为null的记录）
-- **邮件预警**：当水电费余额低于阈值时自动发送邮件提醒
-- **后台监控**：通过 `monitor_daemon.py` 脚本实现周期性自动监控
-- **Aoksend邮件服务**：支持通过Aoksend API发送邮件，提供更灵活的邮件发送选项
-- **Aoksend后台监控**：通过 `monitor_aoksender.py` 脚本实现基于Aoksend API的周期性自动监控
-- **Web可视化界面**：提供基于Web的数据可视化展示界面
-- **RESTful API服务**：提供后端API服务，为Web界面提供数据支持
-- **反向代理支持**：支持通过X-Real-IP和X-Forwarded-For头部获取真实客户端IP，适用于Nginx/Apache等反向代理环境
-- **灵活配置**：支持通过配置文件自定义邮件和监控参数
-- **易于集成**：脚本设计便于集成到其他自动化系统
+- **异常处理**：能够识别并标记异常数据（如时间为空的记录）
+- **一键建表**：通过 `import.sql` 文件快速创建所需的数据库表结构
 
-## 技术特点
+### 🌐 Web可视化
+- **数据展示**：提供基于Web的图形化界面，直观展示水电费数据
+- **多种模式**：支持用量、用钱、总量、余额等多种数据展示模式
+- **交互查询**：支持设备搜索和自定义数据点数量
+- **图表可视化**：通过图表直观展示数据变化趋势
+- **邮件订阅**：支持用户订阅和解绑邮件通知服务
+- **邮件余额显示**：实时显示剩余邮件数量
 
-- 模拟学校网站的登录和查询流程
-- 实现了与网站完全一致的参数加密和签名算法
-- 无需维护会话状态，通过URL参数维持用户验证
-- 采用标准的HTTP请求和JSON数据格式
-- 支持多种邮件发送方式（SMTP和Aoksend API）
-- 支持灵活的邮件模板和配置
-- 支持MySQL数据库存储和查询历史数据
-- 提供Web前端界面和后端API服务
-- 支持数据可视化展示和交互式查询
-- 支持反向代理环境（Nginx/Apache），通过X-Real-IP/X-Forwarded-For获取真实客户端IP
+### ⚙️ 自动化执行
+- **守护进程**：通过 `daemon.sh` 脚本实现周期性自动执行任务
+- **灵活配置**：支持通过配置文件自定义执行间隔和命令
 
-## 文件说明
+## 技术亮点
 
-- `login.py` - 用户登录脚本，接收账号密码作为参数，返回登录结果
-- `get_data.py` - 水电费数据查询脚本，接收用户ID和角色ID作为参数，返回水电费信息
-- `check_data.py` - 分页设备数据查询脚本，支持pageNum和pageSize参数控制分页
-- `data2sql.py` - 数据库存储脚本，将查询到的数据存储到MySQL数据库，支持数据去重和异常数据识别
-- `daemon.sh` - 守护进程脚本，根据配置文件重复执行命令
-- `mail_sender.py` - 邮件发送脚本（基于SMTP协议），自动获取数据并发送邮件通知
-- `monitor_daemon.py` - 监控守护进程脚本（基于SMTP协议），按配置周期检查数据并发送预警邮件
-- `aoksend-api-cli.py` - Aoksend邮件API命令行工具（来自 https://github.com/your-username/aoksend-api-cli ），用于测试和调试邮件发送功能
-- `monitor_aoksender.py` - 监控守护进程脚本（基于Aoksend API），按配置周期检查数据并发送预警邮件
-- `mail_setting.ini` - SMTP邮件发送配置文件
-- `config/aoksender.ini` - Aoksend邮件API配置文件
-- `config/daemon.ini` - 守护进程配置文件
-- `config/monitor_config.ini` - 数据监控配置文件（SMTP方式）
-- `config/mail_texter.txt` - 邮件模板文件
-- `config/mysql.ini` - MySQL数据库连接配置文件
-- `import.sql` - 数据库表结构导入文件，用于快速创建项目所需的数据库表结构
-- `IFLOW.md` - 项目开发过程和技术细节说明
-- `config/example.txt` - 使用示例文件
-- `server/` - Web后端API服务目录
-  - `server.py` - Web后端API服务主程序（支持高性能连接池、线程池、输入验证及反向代理IP获取）
-  - `server.ini` - API服务配置文件
-- `web/` - Web前端文件目录
-  - `index.html` - Web界面主页面
-  - `main.js` - Web界面主逻辑
-  - `styles.css` - Web界面样式
-  - `config.js` - Web界面配置文件
+- **完全模拟**：精确模拟学校网站的登录和查询流程，包括参数加密和签名算法
+- **无会话依赖**：通过URL参数维持用户验证，无需维护复杂的会话状态
+- **模块化设计**：各功能模块独立，支持命令行调用，返回标准JSON格式数据，便于集成
+- **高性能API**：Web后端采用连接池和线程池技术，显著提升查询性能
+- **安全防护**：支持只读用户访问，输入参数验证，防止SQL注入
+- **反向代理支持**：支持Nginx、Apache等反向代理环境
 
-## 使用方法
+## 项目结构
 
-### 登录
-```bash
-python3 login.py <phone_number> <password>
+```
+sany_check_money/
+├── login.py                 # 用户登录脚本
+├── get_data.py              # 水电费数据查询脚本
+├── check_data.py            # 分页设备数据查询脚本
+├── data2sql.py              # 数据库存储脚本
+├── daemon.sh                # 守护进程脚本
+├── mail_sender.py           # SMTP邮件发送脚本
+├── monitor_daemon.py        # SMTP监控守护进程
+├── aoksend-api-cli.py       # Aoksend邮件API命令行工具
+├── monitor_aoksender.py     # Aoksend监控守护进程
+├── import.sql               # 数据库表结构导入文件
+├── IFLOW.md                 # 项目开发过程和技术细节说明
+├── config/                  # 配置文件目录
+│   ├── mail_setting.ini     # SMTP邮件配置
+│   ├── aoksender.ini        # Aoksend API配置
+│   ├── daemon.ini           # 守护进程配置
+│   ├── monitor_config.ini   # 监控配置
+│   ├── mail_texter.txt      # 邮件模板
+│   └── mysql.ini            # MySQL数据库配置
+├── server/                  # Web后端服务
+│   ├── server.py            # RESTful API服务
+│   ├── email_api.py         # 邮件订阅API
+│   ├── aokbalance_get.py    # Aoksend余额查询服务
+│   └── *.ini                # 服务配置文件
+└── web/                     # Web前端界面
+    ├── index.html           # 主页面
+    ├── main.js              # 主逻辑
+    ├── styles.css           # 样式文件
+    └── config.js            # 前端配置
 ```
 
-### 查询水电费
+## 快速开始
+
+### 1. 环境准备
+
+确保已安装Python 3.x和必要的依赖库：
+
+```bash
+pip install requests pymysql
+```
+
+### 2. 数据库配置
+
+创建MySQL数据库并导入表结构：
+
+```bash
+mysql -h [服务器地址] -u [用户名] -p < import.sql
+```
+
+配置数据库连接信息：
+
+```ini
+# config/mysql.ini
+[mysql]
+mysql_server = your_mysql_host
+mysql_port = 3306
+login_user = your_username
+login_passwd = your_password
+db_schema = sany_check_money
+```
+
+### 3. 基础查询
+
+登录获取用户信息：
+
+```bash
+python3 login.py <手机号> <密码>
+```
+
+查询水电费数据：
+
 ```bash
 python3 get_data.py <appUserId> <roleId>
 ```
 
-### 分页查询设备数据
-```bash
-./check_data.py <appUserId> <roleKey> [pageNum] [pageSize]
-```
-- `pageNum`一般设为1
-- `pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
+### 4. 数据存储
 
-### 存储数据到数据库
+将数据存储到数据库：
+
 ```bash
 ./data2sql.py <appUserId> <roleId> [pageNum] [pageSize]
 ```
-- `pageNum`一般设为1
-- `pageSize`学校未设置限制，但请合理使用，避免请求过大数据量
 
-### 守护进程运行
+### 5. 邮件预警
+
+配置邮件发送参数后，启动监控服务：
+
 ```bash
-./daemon.sh
-```
-该命令会：
-1. 读取`config/daemon.ini`配置文件
-2. 根据配置的`rec_time`参数设置重复执行间隔
-3. 执行配置的`command`命令
-4. 无限循环执行，每次执行后等待指定时间
-
-### 导入数据库表结构
-```bash
-mysql -h [服务器地址] -u [用户名] -p < import.sql
-```
-该命令会创建项目所需的数据库和表结构，包括device表和data表。
-
-### 发送邮件通知（SMTP方式）
-```bash
-./mail_sender.py <账号> <密码>
-```
-
-该命令会自动执行登录、获取数据并发送邮件的完整流程。
-
-### 发送邮件通知（Aoksend API方式）
-```bash
-python3 aoksend-api-cli.py --app-key YOUR_KEY --template-id TEMPLATE_ID --to recipient@example.com
-```
-
-该命令通过Aoksend邮件API发送邮件，支持更多高级功能。`aoksend-api-cli.py` 也是本项目作者开发的工具，开源在另一个仓库，详细用法请移步 https://github.com/xmb505/aoksend-api-cli
-
-### 后台监控服务（SMTP方式）
-```bash
+# SMTP方式
 ./monitor_daemon.py <账号> <密码>
-```
 
-该命令会启动后台监控服务，按照 `config/monitor_config.ini` 中配置的检查周期持续监控水电费余额，
-当余额低于设定阈值时自动发送邮件通知。
-
-### 后台监控服务（Aoksend API方式）
-```bash
+# Aoksend API方式
 ./monitor_aoksender.py <账号> <密码>
 ```
 
-该命令会启动后台监控服务，按照 `config/aoksender.ini` 中配置的检查周期持续监控水电费余额，
-当余额低于设定阈值时自动通过Aoksend API发送邮件通知。
+### 6. Web服务
 
-### 启动Web服务
+启动Web后端API服务：
+
 ```bash
 cd server
 python3 server.py
 ```
 
-该命令会启动Web后端API服务，默认监听8080端口。
+在浏览器中访问 `http://localhost:8080` 查看Web界面。
 
-### 访问Web界面
-在浏览器中打开 `http://localhost:8080` 即可访问Web界面。
+## 配置说明
 
-Web界面功能包括：
-- 数据可视化展示（支持用量、用钱、总量、余额等多种模式）
-- 数据点数量自定义（5、10、20、50、100或自定义）
-- 设备搜索功能
-- 数据图表展示
-- 设备详细信息查看
+项目使用多个配置文件来管理不同功能的参数。为了保护隐私和便于部署，所有配置文件都提供了示例模板（以`example_`开头的文件）。
 
-## 配置文件
+### 配置文件列表
 
-### mail_setting.ini
-邮件发送配置文件（SMTP方式），包含SMTP服务器设置、用户名、密码等信息。
+- `config/mysql.ini`：数据库连接配置
+- `config/mail_setting.ini`：SMTP邮件发送配置
+- `config/aoksender.ini`：Aoksend API配置
+- `config/daemon.ini`：守护进程配置
+- `config/monitor_config.ini`：数据监控配置
+- `config/mail_texter.txt`：邮件模板文件
+- `server/server.ini`：Web后端API服务配置
+- `server/email_api.ini`：邮件订阅API配置
+- `server/aokbalance_get.ini`：Aoksend余额查询服务配置
+- `web/config.js`：Web前端配置
 
-**smtp节:**
-- `server`: SMTP服务器地址
-- `port`: SMTP服务器端口 (465用于SSL, 587用于TLS)
-- `username`: 发送邮件的用户名
-- `password`: 发送邮件的密码或应用专用密码
-- `sender`: 发件人邮箱地址
-- `sender_name`: 发件人显示名称
-- `receivers`: 收件人邮箱地址 (多个邮箱请用逗号分隔)
-- `encryption`: 邮件加密方式 (ssl/tls)
+### 配置文件使用方法
 
-### config/aoksender.ini
-邮件发送配置文件（Aoksend API方式），包含Aoksend邮件API设置、API密钥、模板ID等信息。
+1. 复制示例配置文件并重命名为实际使用的文件名：
+   ```bash
+   cp config/example_mysql.ini config/mysql.ini
+   cp config/example_aoksender.ini config/aoksender.ini
+   cp server/example_server.ini server/server.ini
+   cp server/example_email_api.ini server/email_api.ini
+   cp web/example_config.js web/config.js
+   ```
 
-**aoksender节:**
-- `server`: API地址（选填）
-- `app_key`: API密钥
-- `template_id`: 模板ID
-- `to`: 收件人地址
-- `reply_to`: 默认回复地址
-- `alias`: 发件人名称
-- `attachment`: 邮件附件路径
+2. 根据实际环境修改配置文件中的参数
 
-**monitor节:**
-- `monitor_timer`: 循环检测时间，单位为秒
-- `monitor_keyword`: JSON检测关键词，对应的数据必须是数字
-- `monitor_start`: 低于数值触发程序阈值
+3. 项目会自动忽略实际配置文件，确保敏感信息不会被上传到版本控制系统
 
-### config/monitor_config.ini
-数据监控配置文件（SMTP方式），包含检查周期、预警阈值等参数。
+详细配置说明请参考各配置文件内的注释。
 
-**data节:**
-- `check_round`: 检查周期，单位为秒
-- `ele_keyword`: 电表关键字，用于识别电表数据
-- `ele_num`: 电表余额警报阈值
-- `water_keyword`: 水表关键字，用于识别水表数据
-- `water_num`: 水表余额警报阈值
+## 使用场景
 
-### config/mail_texter.txt
-邮件模板文件，可自定义邮件内容格式。支持使用{{DATA_SECTION}}占位符来插入水电费数据。
-
-### config/mysql.ini
-MySQL数据库连接配置文件，包含数据库连接设置等信息。
-
-**mysql节:**
-- `mysql_server`: MySQL服务器地址
-- `mysql_port`: MySQL服务器端口（默认3306）
-- `login_user`: 数据库登录用户名
-- `login_passwd`: 数据库密码
-- `db_schema`: 数据库名称
-
-### config/daemon.ini
-守护进程配置文件，包含执行间隔时间和需要执行的命令。
-
-**daemon节:**
-- `rec_time`: 重复执行时间，单位为秒
-- `command`: 需要执行的命令
-
-### server/server.ini
-Web后端API服务配置文件，包含数据库连接信息和服务器配置。
-
-**mysql节:**
-- `mysql_server`: MySQL服务器地址
-- `mysql_port`: MySQL服务器端口（默认3306）
-- `login_user`: 数据库登录用户名
-- `login_passwd`: 数据库密码
-- `db_schema`: 数据库名称
-
-**server节:**
-- `port`: API服务端口（默认8080）
-
-**config节:**
-- `first_screen_count`: 首屏显示设备数量
-
-### web/config.js
-Web前端配置文件，包含API服务器地址和界面显示配置。
-
-**配置项:**
-- `API_BASE_URL`: API服务器地址和端口
-- `API_TIMEOUT`: 请求超时时间(毫秒)
-- `DEFAULT_DATA_COUNT`: 默认数据点数量
-- `DEFAULT_MODE`: 默认数据展示模式（usage=用量模式, cost=用钱模式, total=总量模式, balance=余额模式）
-- `BACKGROUND_IMAGE_URL`: 背景图片URL
-- `BACKGROUND_IMAGE_OPACITY`: 背景图片透明度（0-1）
-- `BACKGROUND_BLUR_RADIUS`: 背景图片模糊半径
-- `CONTAINER_OPACITY`: 容器透明度（0-1）
-- `FAVICON_URL`: 网站favicon URL
-
-## 依赖项
-
-- Python 3.x
-- `requests` 库用于HTTP请求
-- `hashlib` 库用于MD5加密
-- `smtplib` 和 `email` 库用于邮件发送
-- `configparser` 库用于配置文件解析
-- `subprocess` 库用于脚本间调用
-- `json` 库用于数据处理
-- `time` 库用于时间处理
-- `sys` 库用于系统操作
-- `argparse` 库用于命令行参数解析
-- `pymysql` 库用于MySQL数据库连接（需要安装pip）
-- `pip` 用于安装Python包（连接MySQL数据库需要）
-- `chart.js` 用于Web界面数据图表展示（通过CDN引入）
+1. **个人监控**：学生个人使用，定期检查宿舍水电费余额
+2. **宿舍管理**：宿舍管理员批量监控多个房间的水电费情况
+3. **数据分析**：通过数据库存储的历史数据进行用量趋势分析
+4. **系统集成**：作为其他自动化系统的一部分，提供水电费数据接口
 
 ## 注意事项
 
@@ -274,10 +208,6 @@ Web前端配置文件，包含API服务器地址和界面显示配置。
 - 不建议在生产环境中频繁使用本脚本，可能对学校服务器造成压力
 - 使用分页查询时请合理设置pageSize，避免请求过大数据量
 - 项目维护者不对因使用本脚本导致的任何后果承担责任
-- 使用邮件功能时，请确保配置文件中的SMTP设置正确
-- 使用数据库功能时，请确保已安装pymysql库
-- 使用import.sql文件时，请确保MySQL服务已启动并具有适当的权限
-- 使用daemon.sh脚本时，请确保配置文件中的命令正确且具有执行权限
 
 ## 贡献
 
