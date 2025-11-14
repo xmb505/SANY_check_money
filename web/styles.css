@@ -1,0 +1,998 @@
+/* 全局样式 */
+:root {
+    --bg-color: #f5f5f5;
+    --text-color: #333;
+    --container-bg: #fff;
+    --header-bg: #fff;
+    --tab-bg: #e0e0e0;
+    --tab-active-bg: #2196F3;
+    --search-input-bg: #fff;
+    --search-input-border: #ddd;
+    --search-btn-bg: #4CAF50;
+    --search-btn-hover-bg: #45a049;
+    --tab-content-bg: #fff;
+    --mode-btn-bg: #e0e0e0;
+    --mode-btn-active-bg: #2196F3;
+    --main-content-bg: #fff;
+    --card-bg: #fafafa;
+    --card-border: #ddd;
+    --card-header-border: #eee;
+    --card-type-electric-bg: #FFC107;
+    --card-type-electric-text: #333;
+    --card-type-water-bg: #2196F3;
+    --card-type-water-text: white;
+    --card-data-border: #eee;
+    --toggle-details-btn-bg: #4CAF50;
+    --toggle-details-btn-hover-bg: #45a049;
+    --modal-content-bg: #fff;
+    --detail-info-border: #eee;
+    --data-table-header-bg: #f5f5f5;
+    --data-table-border: #ddd;
+    --count-btn-bg: #e0e0e0;
+    --count-btn-active-bg: #2196F3;
+    --custom-count-input-bg: #fff;
+    --custom-count-input-border: #ddd;
+    --set-custom-count-bg: #4CAF50;
+    --set-custom-count-hover-bg: #45a049;
+    --home-btn-bg: #e0e0e0;
+    --home-btn-border: #ddd;
+    --home-btn-hover-bg: #d5d5d5;
+    --status-on-bg: #4CAF50;
+    --status-off-bg: #F44336;
+    --subscribe-btn-bg: #2196F3;
+    --subscribe-btn-hover-bg: #1976D2;
+    --unsubscribe-btn-bg: #f44336;
+    --unsubscribe-btn-hover-bg: #d32f2f;
+    --form-input-bg: #fff;
+    --form-input-border: #ddd;
+    --form-input-focus-border: #2196F3;
+    --form-input-focus-shadow: rgba(33, 150, 243, 0.2);
+    --footer-bg: #fff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+body.with-background {
+    background-color: rgba(245, 245, 245, 0.9); /* 默认背景色带透明度 */
+}
+
+/* 暗色主题 */
+body.dark-mode {
+    --bg-color: #1a1a1a;
+    --text-color: #f0f0f0;
+    --container-bg: #2d2d2d;
+    --header-bg: #333;
+    --tab-bg: #444;
+    --tab-active-bg: #2196F3;
+    --search-input-bg: #444;
+    --search-input-border: #555;
+    --search-btn-bg: #4CAF50;
+    --search-btn-hover-bg: #45a049;
+    --tab-content-bg: #333;
+    --mode-btn-bg: #444;
+    --mode-btn-active-bg: #2196F3;
+    --main-content-bg: #333;
+    --card-bg: #444;
+    --card-border: #555;
+    --card-header-border: #555;
+    --card-type-electric-bg: #FFC107;
+    --card-type-electric-text: #333;
+    --card-type-water-bg: #2196F3;
+    --card-type-water-text: white;
+    --card-data-border: #555;
+    --toggle-details-btn-bg: #4CAF50;
+    --toggle-details-btn-hover-bg: #45a049;
+    --modal-content-bg: #333;
+    --detail-info-border: #555;
+    --data-table-header-bg: #444;
+    --data-table-border: #555;
+    --count-btn-bg: #444;
+    --count-btn-active-bg: #2196F3;
+    --custom-count-input-bg: #444;
+    --custom-count-input-border: #555;
+    --set-custom-count-bg: #4CAF50;
+    --set-custom-count-hover-bg: #45a049;
+    --home-btn-bg: #444;
+    --home-btn-border: #555;
+    --home-btn-hover-bg: #555;
+    --form-input-bg: #444;
+    --form-input-border: #555;
+    --form-input-focus-border: #64B5F6;
+    --form-input-focus-shadow: rgba(100, 181, 246, 0.2);
+    --footer-bg: #333;
+}
+
+body.dark-mode {
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.container {
+    background-color: var(--container-bg);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.header {
+    background-color: var(--header-bg);
+    color: var(--text-color);
+}
+
+.tab {
+    background-color: var(--tab-bg);
+    color: var(--text-color);
+}
+
+.tab.active {
+    background-color: var(--tab-active-bg);
+}
+
+#search-input {
+    background-color: var(--search-input-bg);
+    color: var(--text-color);
+    border-color: var(--search-input-border);
+}
+
+#search-btn {
+    background-color: var(--search-btn-bg);
+}
+
+#search-btn:hover {
+    background-color: var(--search-btn-hover-bg);
+}
+
+.tab-content {
+    background-color: var(--tab-content-bg);
+    color: var(--text-color);
+}
+
+.mode-btn {
+    background-color: var(--mode-btn-bg);
+    color: var(--text-color);
+}
+
+.mode-btn.active {
+    background-color: var(--mode-btn-active-bg);
+}
+
+.main-content {
+    background-color: var(--main-content-bg);
+}
+
+.card {
+    background-color: var(--card-bg);
+    border-color: var(--card-border);
+    color: var(--text-color);
+}
+
+.card-header {
+    border-bottom-color: var(--card-header-border);
+}
+
+.card-type.electric {
+    background-color: var(--card-type-electric-bg);
+    color: var(--card-type-electric-text);
+}
+
+.card-type.water {
+    background-color: var(--card-type-water-bg);
+    color: var(--card-type-water-text);
+}
+
+.card-data-item {
+    border-bottom-color: var(--card-data-border);
+}
+
+.toggle-details-btn {
+    background-color: var(--toggle-details-btn-bg);
+}
+
+.toggle-details-btn:hover {
+    background-color: var(--toggle-details-btn-hover-bg);
+}
+
+.modal-content {
+    background-color: var(--modal-content-bg);
+    color: var(--text-color);
+}
+
+.detail-info-item {
+    border-bottom-color: var(--detail-info-border);
+}
+
+.data-table th {
+    background-color: var(--data-table-header-bg);
+}
+
+.data-table th,
+.data-table td {
+    border-bottom-color: var(--data-table-border);
+}
+
+.count-btn {
+    background-color: var(--count-btn-bg);
+    color: var(--text-color);
+}
+
+.count-btn.active {
+    background-color: var(--count-btn-active-bg);
+}
+
+#custom-count-input {
+    background-color: var(--custom-count-input-bg);
+    color: var(--text-color);
+    border-color: var(--custom-count-input-border);
+}
+
+#set-custom-count {
+    background-color: var(--set-custom-count-bg);
+}
+
+#set-custom-count:hover {
+    background-color: var(--set-custom-count-hover-bg);
+}
+
+.home-btn {
+    background-color: var(--home-btn-bg);
+    border-color: var(--home-btn-border);
+}
+
+.home-btn:hover {
+    background-color: var(--home-btn-hover-bg);
+}
+
+.status-on {
+    background-color: var(--status-on-bg);
+}
+
+.status-off {
+    background-color: var(--status-off-bg);
+}
+
+.subscribe-btn {
+    background-color: var(--subscribe-btn-bg);
+}
+
+.subscribe-btn:hover {
+    background-color: var(--subscribe-btn-hover-bg);
+}
+
+#unsubscribe-btn {
+    background-color: var(--unsubscribe-btn-bg);
+}
+
+#unsubscribe-btn:hover {
+    background-color: var(--unsubscribe-btn-hover-bg);
+}
+
+.form-group input {
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+    border-color: var(--form-input-border);
+}
+
+.form-group input:focus {
+    border-color: var(--form-input-focus-border);
+    box-shadow: 0 0 0 2px var(--form-input-focus-shadow);
+}
+
+.footer-content-container {
+    background-color: var(--footer-bg);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    background-color: var(--container-bg);
+}
+
+/* 顶部导航栏 */
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--header-bg);
+    padding: 15px 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+}
+
+/* 左侧内容（首页按钮和选项卡） */
+.header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* 返回首页按钮 */
+.home-btn {
+    width: 40px;
+    height: 40px;
+    padding: 5px;
+    background-color: var(--home-btn-bg);
+    border: 1px solid var(--home-btn-border);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s, transform 0.2s;
+    min-width: 40px; /* 确保最小宽度与选项卡按钮一致 */
+}
+
+.home-btn:hover {
+    background-color: #d5d5d5;
+    transform: scale(1.1);
+}
+
+/* 暗色主题下的返回首页按钮 */
+body.dark-mode .home-btn {
+    background-color: #444;
+    border-color: #555;
+    color: #f0f0f0;
+}
+
+body.dark-mode .home-btn:hover {
+    background-color: #555;
+}
+
+/* 选项卡 */
+.tabs {
+    display: flex;
+    gap: 10px;
+}
+
+.tab {
+    padding: 10px 20px;
+    background-color: var(--tab-bg);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.tab.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+/* 搜索框 */
+.search-container {
+    display: flex;
+    gap: 10px;
+}
+
+#search-input {
+    padding: 10px;
+    border: 1px solid var(--search-input-border);
+    border-radius: 5px;
+    width: 250px;
+}
+
+#search-btn {
+    padding: 10px 20px;
+    background-color: var(--search-btn-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#search-btn:hover {
+    background-color: var(--search-btn-hover-bg);
+}
+
+/* 选项卡内容 */
+.tab-content {
+    background-color: var(--tab-content-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* 数据量选项 */
+.data-count-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.data-count-options label {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.preset-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.count-btn {
+    padding: 8px 15px;
+    background-color: var(--count-btn-bg);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.count-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.count-btn:hover {
+    background-color: #d5d5d5;
+}
+
+.custom-input {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#custom-count-input {
+    padding: 8px;
+    border: 1px solid var(--custom-count-input-border);
+    border-radius: 5px;
+    width: 120px;
+}
+
+#set-custom-count {
+    padding: 8px 15px;
+    background-color: var(--set-custom-count-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#set-custom-count:hover {
+    background-color: var(--set-custom-count-hover-bg);
+}
+
+/* 模式按钮 */
+.mode-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.mode-btn {
+    padding: 10px 20px;
+    background-color: var(--mode-btn-bg);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.mode-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.mode-btn:hover {
+    background-color: #d5d5d5;
+}
+
+/* 主要内容区域 */
+.main-content {
+    background-color: var(--main-content-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+}
+
+/* 卡片容器 */
+.cards-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* 卡片样式 */
+.card {
+    border: 1px solid var(--card-border);
+    border-radius: 8px;
+    padding: 20px;
+    background-color: var(--card-bg);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--card-header-border);
+    min-height: 24px;
+}
+
+.card-title {
+    font-size: 18px;
+    font-weight: bold;
+    color: #2196F3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 70%;
+}
+
+.card-badges {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.card-type {
+    font-size: 14px;
+    padding: 3px 8px;
+    border-radius: 10px;
+    background-color: #e0e0e0;
+}
+
+.card-type.electric {
+    background-color: #FFC107;
+    color: #333;
+}
+
+.card-type.water {
+    background-color: #2196F3;
+    color: white;
+}
+
+/* 状态指示器 */
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.status-on {
+    background-color: #4CAF50; /* 绿色 */
+}
+
+.status-off {
+    background-color: #F44336; /* 红色 */
+}
+
+.card-info {
+    margin-bottom: 15px;
+}
+
+.card-info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.card-info-label {
+    font-weight: bold;
+}
+
+.card-data {
+    margin-top: 15px;
+    flex-grow: 1;
+}
+
+.card-data-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--card-data-border);
+}
+
+.card-data-label {
+    font-weight: bold;
+}
+
+.card-data-value {
+    font-family: 'Courier New', monospace;
+}
+
+.toggle-details-btn {
+    padding: 10px;
+    background-color: var(--toggle-details-btn-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    flex-grow: 1;
+    transition: background-color 0.3s;
+    margin-top: auto;
+}
+
+.toggle-details-btn:hover {
+    background-color: #45a049;
+}
+
+/* 卡片按钮组 */
+.card-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: auto;
+    width: 100%;
+}
+
+.toggle-details-btn {
+    padding: 10px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    flex-grow: 1;
+    transition: background-color 0.3s;
+    margin-top: auto;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.toggle-details-btn:hover {
+    background-color: #45a049;
+}
+
+.subscribe-btn {
+    padding: 10px;
+    background-color: var(--subscribe-btn-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    width: 40px;
+    transition: background-color 0.3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.subscribe-btn:hover {
+    background-color: #1976D2;
+}
+
+/* 图表模态框 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.modal-content {
+    background-color: var(--modal-content-bg);
+    margin: 5% auto;
+    padding: 20px;
+    border-radius: 8px;
+    width: 80%;
+    max-width: 800px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.detail-modal-content {
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.subscribe-modal-content {
+    max-width: 500px;
+}
+
+.verification-modal-content {
+    max-width: 400px;
+    text-align: center;
+}
+
+.verification-result {
+    margin-top: 20px;
+}
+
+.verification-success {
+    color: #4CAF50;
+}
+
+.unsubscribe-verification-success {
+    color: #4CAF50;
+}
+
+.celebration-symbol {
+    font-size: 48px;
+    margin: 20px 0;
+}
+
+#close-verification-modal {
+    padding: 10px 20px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+#close-verification-modal:hover {
+    background-color: #1976D2;
+}
+
+#close-unsubscribe-verification-modal {
+    padding: 10px 20px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    margin-top: 10px;
+}
+
+#close-unsubscribe-verification-modal:hover {
+    background-color: #1976D2;
+}
+
+.verification-error {
+    color: #F44336;
+}
+
+.unsubscribe-verification-error {
+    color: #F44336;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+}
+
+#modal-title,
+#detail-modal-title {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#chart-canvas {
+    width: 100% !important;
+    height: 400px !important;
+}
+
+/* 订阅表单样式 */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--form-input-border);
+    border-radius: 5px;
+    font-size: 16px;
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: #2196F3;
+    box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.2);
+}
+
+.form-group input[type="number"] {
+    width: 100px;
+}
+
+.form-group button {
+    padding: 12px 24px;
+    background-color: var(--set-custom-count-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+}
+
+.form-group button:hover {
+    background-color: #45a049;
+}
+
+#unsubscribe-btn {
+    padding: 12px 24px;
+    background-color: var(--unsubscribe-btn-bg); /* 红色背景 */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background-color 0.3s;
+    margin-left: 10px; /* 与订阅按钮之间留一些间距 */
+}
+
+#unsubscribe-btn:hover {
+    background-color: #d32f2f; /* 悬停时更深的红色 */
+}
+
+/* 详细信息样式 */
+.detail-info {
+    margin-bottom: 20px;
+}
+
+.detail-info-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--detail-info-border);
+}
+
+.detail-info-label {
+    font-weight: bold;
+    width: 120px;
+}
+
+.detail-data {
+    margin-top: 20px;
+}
+
+.data-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.data-table th,
+.data-table td {
+    padding: 8px;
+    text-align: left;
+    border-bottom: 1px solid var(--data-table-border);
+}
+
+.data-table th {
+    background-color: var(--data-table-header-bg);
+    font-weight: bold;
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+    .header {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .search-container {
+        width: 100%;
+    }
+    
+    #search-input {
+        width: 100%;
+    }
+    
+    .cards-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .modal-content {
+        width: 95%;
+        margin: 10% auto;
+    }
+    
+    .detail-info-item {
+        flex-direction: column;
+    }
+    
+    .detail-info-label {
+        width: auto;
+        margin-bottom: 5px;
+    }
+}
+
+/* 页脚样式 */
+.footer-content-container {
+    background-color: var(--footer-bg);
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    margin-top: 20px;
+    padding: 20px;
+}
+
+.footer-content-wrapper {
+    text-align: center;
+}
+
+.footer-content-wrapper p {
+    margin: 5px 0;
+}
+
+.footer-content-wrapper a {
+    color: #2196F3;
+    text-decoration: none;
+}
+
+.footer-content-wrapper a:hover {
+    text-decoration: underline;
+}
+
+/* 暗色主题页脚 */
+body.dark-mode .footer-content-container {
+    background-color: #333;
+}
+
+body.dark-mode .footer-content-wrapper a {
+    color: #64B5F6;
+}
+
+/* 暗色模式表单输入框 */
+body.dark-mode .form-group input {
+    background-color: #444;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode .form-group input:focus {
+    border-color: #64B5F6;
+    box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+/* 邮件余额显示样式 */
+#email-balance {
+    font-weight: bold;
+    color: #2196F3; /* 蓝色高亮显示 */
+}
+
+body.dark-mode #email-balance {
+    color: #64B5F6; /* 暗色模式下的蓝色 */
+}

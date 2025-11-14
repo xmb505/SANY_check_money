@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>三一工学院水电费监控面板</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 顶部导航栏 -->
+        <div class="header">
+            <!-- 左侧返回首页按钮和选项卡 -->
+            <div class="header-left">
+                <button class="home-btn" id="home-btn" title="返回首页">
+                    🏠
+                </button>
+                <div class="tabs">
+                    <div class="tab active" data-tab="data-count">数据量</div>
+                    <div class="tab" data-tab="data-mode">数据解析</div>
+                </div>
+            </div>
+            
+            <!-- 右侧搜索框 -->
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="搜索设备...">
+                <button id="search-btn">搜索</button>
+            </div>
+        </div>
+        
+        <!-- 选项卡内容 -->
+        <div class="tab-content">
+            <!-- 数据量选项卡内容 -->
+            <div class="tab-pane active" id="data-count-pane">
+                <div class="data-count-options">
+                    <label>数据点数量:</label>
+                    <div class="preset-buttons">
+                        <button class="count-btn" data-count="5">5</button>
+                        <button class="count-btn" data-count="10">10</button>
+                        <button class="count-btn" data-count="20">20</button>
+                        <button class="count-btn" data-count="50">50</button>
+                        <button class="count-btn" data-count="100">100</button>
+                    </div>
+                    <div class="custom-input">
+                        <input type="number" id="custom-count-input" min="1" max="1000" placeholder="自定义数量">
+                        <button id="set-custom-count">设置</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 数据解析选项卡内容 -->
+            <div class="tab-pane" id="data-mode-pane">
+                <div class="mode-buttons">
+                    <button class="mode-btn active" data-mode="usage">用量模式</button>
+                    <button class="mode-btn" data-mode="cost">用钱模式</button>
+                    <button class="mode-btn" data-mode="total">总量模式</button>
+                    <button class="mode-btn" data-mode="balance">余额模式</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 主要内容区域 -->
+        <div class="main-content">
+            <div class="cards-container" id="cards-container">
+                <!-- 卡片将在这里动态生成 -->
+            </div>
+        </div>
+        
+        <!-- 页脚区域 -->
+        <div class="footer-content-container">
+            <div class="footer-content-wrapper">
+                <p>项目源码: <a href="https://github.com/xmb505/SANY_check_money" target="_blank">GitHub仓库</a></p>
+                <p>个人博客: <a href="https://blog.your_mysql_host" target="_blank">新毛博客</a></p>
+                <p><a href="https://icp.gov.moe/?keyword=20240505" target="_blank">萌ICP备20240505号</a> | <a href="https://beian.miit.gov.cn/" target="_blank">湘ICP备2024053841号</a></p>
+                <p>免费预警邮件数量: <span id="email-balance">加载中...</span></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图表模态框 -->
+    <div class="modal" id="chart-modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modal-title">设备数据图表</h2>
+            <canvas id="chart-canvas"></canvas>
+        </div>
+    </div>
+    
+    <!-- 详细信息模态框 -->
+    <div class="modal" id="detail-modal">
+        <div class="modal-content detail-modal-content">
+            <span class="close">&times;</span>
+            <h2 id="detail-modal-title">设备详细信息</h2>
+            <div id="detail-content"></div>
+        </div>
+    </div>
+    
+    <!-- 订阅模态框 -->
+    <div class="modal" id="subscribe-modal">
+        <div class="modal-content subscribe-modal-content">
+            <span class="close">&times;</span>
+            <h2>订阅邮件提醒</h2>
+            <p class="subscription-info">此操作将把您填写的邮箱绑定到该设备，接收预警通知</p>
+            <p class="subscription-warning">注意：验证码有效期为5分钟，每个邮箱最多可发送25次验证码</p>
+            <form id="subscribe-form">
+                <div class="form-group">
+                    <label for="subscribe-email">邮箱地址:</label>
+                    <input type="email" id="subscribe-email" required>
+                </div>
+                <div class="form-group">
+                    <label for="subscribe-alarm">预警阈值 (1-30元):</label>
+                    <input type="number" id="subscribe-alarm" min="1" max="30" value="10" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">订阅</button>
+                    <button type="button" id="unsubscribe-btn">解绑</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- 验证码输入模态框 -->
+    <div class="modal" id="verification-modal">
+        <div class="modal-content verification-modal-content">
+            <span class="close">&times;</span>
+            <h2>输入验证码</h2>
+            <p>验证码已发送至您的邮箱，请查收并输入验证码完成验证。</p>
+            <form id="verification-form">
+                <div class="form-group">
+                    <label for="verification-code">验证码:</label>
+                    <input type="text" id="verification-code" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">验证</button>
+                </div>
+            </form>
+            <div id="verification-result" class="verification-result" style="display: none;">
+                <div id="verification-success" class="verification-success" style="display: none;">
+                    <div class="celebration-symbol">🎉</div>
+                    <p>验证成功！</p>
+                    <button id="close-verification-modal">关闭</button>
+                </div>
+                <div id="verification-error" class="verification-error" style="display: none;">
+                    <p id="verification-error-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 解绑验证码输入模态框 -->
+    <div class="modal" id="unsubscribe-verification-modal">
+        <div class="modal-content verification-modal-content">
+            <span class="close">&times;</span>
+            <h2>输入解绑验证码</h2>
+            <p>解绑验证码已发送至您的邮箱，请查收并输入验证码完成解绑。</p>
+            <form id="unsubscribe-verification-form">
+                <div class="form-group">
+                    <label for="unsubscribe-verification-code">验证码:</label>
+                    <input type="text" id="unsubscribe-verification-code" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit">解绑</button>
+                </div>
+            </form>
+            <div id="unsubscribe-verification-result" class="verification-result" style="display: none;">
+                <div id="unsubscribe-verification-success" class="verification-success" style="display: none;">
+                    <div class="celebration-symbol">👋</div>
+                    <p>解绑成功！</p>
+                    <button id="close-unsubscribe-verification-modal">关闭</button>
+                </div>
+                <div id="unsubscribe-verification-error" class="verification-error" style="display: none;">
+                    <p id="unsubscribe-verification-error-text"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="config.js"></script>
+    <script src="chart.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
