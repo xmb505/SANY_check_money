@@ -282,7 +282,7 @@ def search_devices(keyword):
                 rows.append({
                     "equipmentName": row[0],
                     "installationSite": row[1],
-                    "device_id": str(row[2]),
+                    "device_id": str(row[2]).strip(),
                     "equipmentType": str(row[3]),
                     "status": row[4]
                 })
@@ -328,6 +328,8 @@ class RequestHandler(BaseHTTPRequestHandler):
             elif mode == 'check':
                 # 检查设备数据
                 device_id = params.get('device_id', [None])[0]
+                if device_id:
+                    device_id = device_id.strip()  # 去除首尾空格
                 data_num = params.get('data_num', [5])[0]  # 默认5条数据
                 print(f"[INFO] 处理设备检查请求，设备ID: {device_id}, 数据量: {data_num}")
                 if device_id:

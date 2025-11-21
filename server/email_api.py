@@ -72,6 +72,11 @@ def create_connection_pool():
                 autocommit=True,
                 init_command='SET SESSION sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"'
             )
+            # 验证连接是否有效
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+            cursor.close()
             connection_pool.put(conn)
         except Exception as e:
             print(f"[ERROR] 创建连接池失败: {str(e)}")
@@ -103,10 +108,35 @@ def get_db_connection():
         print("[INFO] 从连接池获取数据库连接")
         # 检查连接是否有效
         try:
-            conn.ping(reconnect=True)
-        except Exception as e:
+            # 使用更严格的连接验证方法
+            if not conn.open:
+                print("[WARN] 连接已关闭，创建新连接")
+                conn = pymysql.connect(
+                    host=DB_HOST,
+                    port=DB_PORT,
+                    user=DB_USER,
+                    password=DB_PASSWORD,
+                    database=DB_NAME,
+                    charset='utf8mb4',
+                    connect_timeout=30,
+                    read_timeout=30,
+                    write_timeout=30,
+                    autocommit=True,
+                    init_command='SET SESSION sql_mode = "STRICT_TRANS_TABLES,NO_ZERO_DATE,NO_ZERO_IN_DATE,ERROR_FOR_DIVISION_BY_ZERO"'
+                )
+            else:
+                # 发送简单查询测试连接是否有效
+                cursor = conn.cursor()
+                cursor.execute('SELECT 1')
+                cursor.fetchone()
+                cursor.close()
+        except (pymysql.OperationalError, pymysql.InterfaceError, AttributeError) as e:
             print(f"[WARN] 连接已失效，创建新连接: {str(e)}")
-            # 连接失效，创建新连接
+            # 连接失效，关闭旧连接并创建新连接
+            try:
+                conn.close()
+            except:
+                pass
             conn = pymysql.connect(
                 host=DB_HOST,
                 port=DB_PORT,
@@ -147,16 +177,33 @@ def get_db_connection():
 def release_db_connection(conn):
     try:
         # 检查连接是否有效
-        conn.ping(reconnect=True)
-        # 将连接放回连接池
-        if not connection_pool.full():
-            connection_pool.put(conn)
+        if conn.open:
+            # 发送简单查询测试连接是否有效
+            cursor = conn.cursor()
+            cursor.execute('SELECT 1')
+            cursor.fetchone()
+            cursor.close()
+            # 将连接放回连接池
+            if not connection_pool.full():
+                connection_pool.put(conn)
+            else:
+                # 如果连接池已满，关闭连接
+                conn.close()
+            print("[INFO] 数据库连接已返回连接池")
         else:
-            # 如果连接池已满，关闭连接
-            conn.close()
-        print("[INFO] 数据库连接已返回连接池")
-    except Exception as e:
+            print("[WARN] 连接已关闭，不再返回连接池")
+            try:
+                conn.close()
+            except:
+                pass
+    except (pymysql.OperationalError, pymysql.InterfaceError) as e:
         print(f"[WARN] 连接无效，连接已关闭: {str(e)}")
+        try:
+            conn.close()
+        except:
+            pass
+    except Exception as e:
+        print(f"[WARN] 释放连接时发生未知错误: {str(e)}")
         try:
             conn.close()
         except:

@@ -1,0 +1,11 @@
+# Command: undo
+# Description: Safe rollback with git checkpoint restore
+# Category: utility
+# Version: 1
+# Author: 10169
+
+description = "Safe rollback with git checkpoint restore"
+
+prompt = """
+I'll provide safe rollback functionality with git checkpoint restore. I'll identify recent checkpoints, show rollback options, and restore to previous states without data loss. I'll preserve important changes while reverting problematic ones. I'll provide rollback safety checks and ensure system integrity during the process. Integration with development workflow includes automatic checkpoint creation before major operations.
+"""
