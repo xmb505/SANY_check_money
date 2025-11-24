@@ -2,6 +2,7 @@
 let CONFIG = {}; // 初始化为空对象, 稍后动态加载
 let currentDataCount = 5; // 默认值
 let currentMode = 'usage'; // 默认值
+let currentDataMode = 'count'; // 数据模式: 'count' 或 'date'
 let currentDeviceIds = [];
 let deviceDataCache = {};
 let isVerificationSuccessful = false; // 跟踪验证是否成功
@@ -115,13 +116,15 @@ function loadConfig() {
                 
                 // 设置默认值(如果配置中没有定义)
                 if (CONFIG.DEFAULT_DATA_COUNT === undefined) CONFIG.DEFAULT_DATA_COUNT = 5;
-                if (CONFIG.DEFAULT_MODE === undefined) CONFIG.DEFAULT_MODE = 'usage';
+                if (CONFIG.DEFAULT_MODE === undefined) CONFIG.DEFAULT_MODE = 'balance'; // 默认为余额模式
+                if (CONFIG.DATA_MODE === undefined) CONFIG.DATA_MODE = 'data_point'; // 默认为数据点模式
                 if (CONFIG.API_TIMEOUT === undefined) CONFIG.API_TIMEOUT = 5000;
                 if (CONFIG.API_BASE_URL === undefined) CONFIG.API_BASE_URL = 'http://localhost:8080';
                 
                 // 更新全局变量
                 currentDataCount = CONFIG.DEFAULT_DATA_COUNT;
                 currentMode = CONFIG.DEFAULT_MODE;
+                currentDataMode = CONFIG.DATA_MODE === 'date' ? 'date' : 'count'; // date模式对应'date'，数据点模式对应'count'
                 
                 resolve();
             } else {
@@ -422,9 +425,54 @@ function initDataCountButtons() {
     const countButtons = document.querySelectorAll('.count-btn');
     const customInput = document.getElementById('custom-count-input');
     const setCustomBtn = document.getElementById('set-custom-count');
+    const dataModeButtons = document.querySelectorAll('.mode-selection .mode-btn');
+    const countModeOptions = document.querySelector('.count-mode-options');
+    const dateModeOptions = document.querySelector('.date-mode-options');
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const loadDateDataBtn = document.getElementById('load-date-data');
     
     // 设置初始激活按钮
     updateActiveButton(currentDataCount);
+    updateDataModeButton();
+    updateModeButton();  // 确保数据解析模式按钮也被正确激活
+    
+    // 设置默认日期（今天和一周前）
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+    
+    startDateInput.value = weekAgoStr;
+    endDateInput.value = today;
+    
+    // 监听模式切换按钮点击
+    dataModeButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const mode = this.getAttribute('data-mode');
+            currentDataMode = mode;
+            
+            // 更新激活按钮
+            updateDataModeButton();
+            
+            // 显示/隐藏相应的选项
+            if (mode === 'count') {
+                countModeOptions.style.display = 'block';
+                dateModeOptions.style.display = 'none';
+            } else {
+                countModeOptions.style.display = 'none';
+                dateModeOptions.style.display = 'block';
+            }
+            
+            // 重新加载数据
+            if (currentDeviceIds.length > 0) {
+                reloadDeviceData();
+            }
+            
+            // 确保数据解析模式按钮状态正确
+            updateModeButton();
+        });
+    });
     
     // 监听预设按钮点击
     countButtons.forEach(button => {
@@ -461,12 +509,52 @@ function initDataCountButtons() {
         }
     });
     
+    // 监听日期数据加载按钮点击
+    loadDateDataBtn.addEventListener('click', function() {
+        // 验证日期输入
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        
+        if (!startDate || !endDate) {
+            alert('请先选择开始日期和结束日期');
+            return;
+        }
+        
+        if (new Date(startDate) > new Date(endDate)) {
+            alert('开始日期不能晚于结束日期');
+            return;
+        }
+        
+        // 重新加载数据
+        if (currentDeviceIds.length > 0) {
+            reloadDeviceData();
+        }
+    });
+    
     // 监听回车键
     customInput.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             setCustomBtn.click();
         }
     });
+}
+
+// 更新数据模式按钮激活状态
+function updateDataModeButton() {
+    // 只选择数据模式按钮（数据点/日期），不包括数据解析模式按钮
+    const modeButtons = document.querySelectorAll('.mode-selection .mode-btn');
+    
+    // 移除所有按钮的激活状态
+    modeButtons.forEach(btn => btn.classList.remove('active'));
+    
+    // 查找匹配的按钮并激活
+    const matchingButton = Array.from(modeButtons).find(btn => 
+        btn.getAttribute('data-mode') === currentDataMode
+    );
+    
+    if (matchingButton) {
+        matchingButton.classList.add('active');
+    }
 }
 
 // 更新激活按钮
@@ -488,7 +576,7 @@ function updateActiveButton(count) {
 
 // 初始化模式按钮
 function initModeButtons() {
-    const modeButtons = document.querySelectorAll('.mode-btn');
+    const modeButtons = document.querySelectorAll('.mode-buttons .mode-btn');
     
     // 根据当前模式设置激活按钮
     updateModeButton();
@@ -512,7 +600,8 @@ function initModeButtons() {
 
 // 更新模式按钮激活状态
 function updateModeButton() {
-    const modeButtons = document.querySelectorAll('.mode-btn');
+    // 只选择数据解析模式按钮，不包括数据模式按钮（数据点/日期）
+    const modeButtons = document.querySelectorAll('.mode-buttons .mode-btn');
     
     // 移除所有按钮的激活状态
     modeButtons.forEach(btn => btn.classList.remove('active'));
@@ -812,7 +901,19 @@ async function loadDeviceDataForIds(deviceIds, totalNum = deviceIds.length) {
 async function loadDeviceData(deviceId) {
     try {
         const apiUrl = getApiUrl('main');
-        const response = await fetchWithTimeout(`${apiUrl}/?mode=check&device_id=${deviceId}&data_num=${currentDataCount}`);
+        let url;
+        
+        if (currentDataMode === 'count') {
+            // 数据点模式
+            url = `${apiUrl}/?mode=check&device_id=${deviceId}&data_num=${currentDataCount}`;
+        } else {
+            // 日期模式
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+            url = `${apiUrl}/?mode=check_daily_range&device_id=${deviceId}&start_day=${startDate}&end_day=${endDate}`;
+        }
+        
+        const response = await fetchWithTimeout(url);
         const data = await response.json();
         
         if (data.code === 200) {
@@ -911,7 +1012,10 @@ function calculateDisplayData(rows) {
         return [];
     }
     
-    switch (currentMode) {
+    // 确保currentMode是有效值
+    const mode = ['usage', 'cost', 'total', 'balance'].includes(currentMode) ? currentMode : 'balance';
+    
+    switch (mode) {
         case 'usage':
             // 用量模式: 新total_reading - 旧total_reading
             // 只计算到倒数第二个数据,避免最后一个显示N/A
@@ -919,6 +1023,12 @@ function calculateDisplayData(rows) {
             for (let i = 0; i < rows.length - 1; i++) {
                 const currentReading = parseFloat(rows[i].total_reading);
                 const previousReading = parseFloat(rows[i + 1].total_reading);
+                
+                // 检查数值是否有效
+                if (isNaN(currentReading) || isNaN(previousReading)) {
+                    continue; // 跳过无效数据
+                }
+                
                 const usage = (currentReading - previousReading).toFixed(2);
                 
                 usageData.push({
@@ -936,6 +1046,12 @@ function calculateDisplayData(rows) {
             for (let i = 0; i < rows.length - 1; i++) {
                 const currentBalance = parseFloat(rows[i].remainingBalance);
                 const previousBalance = parseFloat(rows[i + 1].remainingBalance);
+                
+                // 检查数值是否有效
+                if (isNaN(currentBalance) || isNaN(previousBalance)) {
+                    continue; // 跳过无效数据
+                }
+                
                 const diff = currentBalance - previousBalance;
                 
                 let value;
@@ -956,23 +1072,36 @@ function calculateDisplayData(rows) {
             
         case 'total':
             // 总量模式: 直接用读表数据
-            return rows.map(row => ({
-                time: row.read_time,
-                value: `读数: ${row.total_reading}`
-            }));
+            return rows.map(row => {
+                // 确保数值有效
+                const value = parseFloat(row.total_reading);
+                return {
+                    time: row.read_time,
+                    value: `读数: ${isNaN(value) ? row.total_reading : value.toFixed(2)}`
+                };
+            });
             
         case 'balance':
             // 余额模式: 直接显示remainingBalance
-            return rows.map(row => ({
-                time: row.read_time,
-                value: `余额: ${parseFloat(row.remainingBalance).toFixed(2)}`
-            }));
+            return rows.map(row => {
+                // 确保数值有效
+                const value = parseFloat(row.remainingBalance);
+                return {
+                    time: row.read_time,
+                    value: `余额: ${isNaN(value) ? row.remainingBalance : value.toFixed(2)}`
+                };
+            });
             
         default:
-            return rows.map(row => ({
-                time: row.read_time,
-                value: 'N/A'
-            }));
+            // 默认返回balance模式的数据
+            return rows.map(row => {
+                // 确保数值有效
+                const value = parseFloat(row.remainingBalance);
+                return {
+                    time: row.read_time,
+                    value: `余额: ${isNaN(value) ? row.remainingBalance : value.toFixed(2)}`
+                };
+            });
     }
 }
 
@@ -1049,10 +1178,13 @@ function prepareMiniChartData(rows) {
         return { labels: [], values: [] };
     }
     
+    // 确保currentMode是有效值
+    const mode = ['usage', 'cost', 'total', 'balance'].includes(currentMode) ? currentMode : 'balance';
+    
     // 反转数组以正确显示时间序列
     const reversedRows = [...rows].reverse();
     
-    switch (currentMode) {
+    switch (mode) {
         case 'usage':
             // 用量模式: 新total_reading - 旧total_reading
             const usageLabels = [];
@@ -1089,18 +1221,34 @@ function prepareMiniChartData(rows) {
             // 总量模式: 直接用读表数据
             return {
                 labels: reversedRows.map(row => row.read_time),
-                values: reversedRows.map(row => parseFloat(row.total_reading))
+                values: reversedRows.map(row => {
+                    // 确保返回数字类型的值
+                    const value = parseFloat(row.total_reading);
+                    return isNaN(value) ? 0 : value;
+                })
             };
             
         case 'balance':
             // 余额模式: 直接显示remainingBalance
             return {
                 labels: reversedRows.map(row => row.read_time),
-                values: reversedRows.map(row => parseFloat(row.remainingBalance))
+                values: reversedRows.map(row => {
+                    // 确保返回数字类型的值
+                    const value = parseFloat(row.remainingBalance);
+                    return isNaN(value) ? 0 : value;
+                })
             };
             
         default:
-            return { labels: [], values: [] };
+            // 默认返回balance模式的数据
+            return {
+                labels: reversedRows.map(row => row.read_time),
+                values: reversedRows.map(row => {
+                    // 确保返回数字类型的值
+                    const value = parseFloat(row.remainingBalance);
+                    return isNaN(value) ? 0 : value;
+                })
+            };
     }
 }
 
@@ -1590,10 +1738,13 @@ function prepareChartData(rows) {
         return { labels: [], values: [] };
     }
     
+    // 确保currentMode是有效值
+    const mode = ['usage', 'cost', 'total', 'balance'].includes(currentMode) ? currentMode : 'balance';
+    
     // 反转数组以正确显示时间序列
     const reversedRows = [...rows].reverse();
     
-    switch (currentMode) {
+    switch (mode) {
         case 'usage':
             // 用量模式: 新total_reading - 旧total_reading
             const usageLabels = [];
@@ -1630,18 +1781,34 @@ function prepareChartData(rows) {
             // 总量模式: 直接用读表数据
             return {
                 labels: reversedRows.map(row => row.read_time),
-                values: reversedRows.map(row => parseFloat(row.total_reading))
+                values: reversedRows.map(row => {
+                    // 确保返回数字类型的值
+                    const value = parseFloat(row.total_reading);
+                    return isNaN(value) ? 0 : value;
+                })
             };
             
         case 'balance':
             // 余额模式: 直接显示remainingBalance
             return {
                 labels: reversedRows.map(row => row.read_time),
-                values: reversedRows.map(row => parseFloat(row.remainingBalance))
+                values: reversedRows.map(row => {
+                    // 确保返回数字类型的值
+                    const value = parseFloat(row.remainingBalance);
+                    return isNaN(value) ? 0 : value;
+                })
             };
             
         default:
-            return { labels: [], values: [] };
+            // 默认返回balance模式的数据
+            return {
+                labels: reversedRows.map(row => row.read_time),
+                values: reversedRows.map(row => {
+                    // 确保返回数字类型的值
+                    const value = parseFloat(row.remainingBalance);
+                    return isNaN(value) ? 0 : value;
+                })
+            };
     }
 }
 

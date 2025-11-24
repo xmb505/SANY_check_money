@@ -426,6 +426,138 @@ body.dark-mode .home-btn:hover {
     margin-bottom: 5px;
 }
 
+/* 模式选择按钮 */
+.mode-selection {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.mode-btn {
+    padding: 10px 20px;
+    background-color: var(--mode-btn-bg);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.mode-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.mode-btn:hover {
+    background-color: #d5d5d5;
+}
+
+.count-mode-options {
+    display: block;
+}
+
+.count-options-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.date-mode-options {
+    display: block;
+}
+
+.date-options-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: flex-end; /* 让按钮与日期输入框底部对齐 */
+    margin-top: 10px;
+}
+
+.date-options-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center; /* 让所有元素垂直居中对齐 */
+    margin-top: 10px;
+}
+
+.date-inputs-full {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.date-label {
+    font-weight: bold;
+    margin-bottom: 0;
+}
+
+.date-inputs {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.date-range-separator {
+    align-self: center;
+    font-weight: bold;
+    color: var(--text-color);
+    margin: 0 5px;
+}
+
+.date-input-group {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+.date-input-group input[type="date"] {
+    padding: 8px;
+    border: 1px solid var(--custom-count-input-border);
+    border-radius: 5px;
+    width: 120px; /* 与自定义数量输入框保持一致 */
+    font-size: 14px;
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+    font-family: inherit;
+}
+
+/* 日期选择器的下拉箭头样式调整 */
+.date-input-group input[type="date"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+}
+
+/* 暗色主题下日期选择器的样式 */
+body.dark-mode .date-input-group input[type="date"] {
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+    border-color: var(--form-input-border);
+}
+
+/* 为日期输入框的占位符添加样式 */
+.date-input-group input[type="date"]::placeholder {
+    color: #999;
+    opacity: 0.7;
+}
+
+#load-date-data {
+    padding: 8px 15px;
+    background-color: var(--set-custom-count-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    width: fit-content;
+    align-self: flex-start;
+}
+
+#load-date-data:hover {
+    background-color: var(--set-custom-count-hover-bg);
+}
+
 .preset-buttons {
     display: flex;
     gap: 10px;
@@ -454,6 +586,7 @@ body.dark-mode .home-btn:hover {
     display: flex;
     gap: 10px;
     align-items: center;
+    flex-wrap: nowrap;
 }
 
 #custom-count-input {
@@ -471,10 +604,6 @@ body.dark-mode .home-btn:hover {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s;
-}
-
-#set-custom-count:hover {
-    background-color: var(--set-custom-count-hover-bg);
 }
 
 /* 模式按钮 */

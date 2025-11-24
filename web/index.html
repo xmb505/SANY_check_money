@@ -34,22 +34,47 @@
         <!-- 选项卡内容 -->
         <div class="tab-content">
             <!-- 数据量选项卡内容 -->
-            <div class="tab-pane active" id="data-count-pane">
-                <div class="data-count-options">
+        <div class="tab-pane active" id="data-count-pane">
+            <div class="data-count-options">
+                <div class="mode-selection">
+                    <button class="mode-btn active" data-mode="count">数据点模式</button>
+                    <button class="mode-btn" data-mode="date">日期模式</button>
+                </div>
+                <div class="count-mode-options">
                     <label>数据点数量:</label>
-                    <div class="preset-buttons">
-                        <button class="count-btn" data-count="5">5</button>
-                        <button class="count-btn" data-count="10">10</button>
-                        <button class="count-btn" data-count="20">20</button>
-                        <button class="count-btn" data-count="50">50</button>
-                        <button class="count-btn" data-count="100">100</button>
+                    <div class="count-options-container">
+                        <div class="preset-buttons">
+                            <button class="count-btn" data-count="5">5</button>
+                            <button class="count-btn" data-count="10">10</button>
+                            <button class="count-btn" data-count="20">20</button>
+                            <button class="count-btn" data-count="50">50</button>
+                            <button class="count-btn" data-count="100">100</button>
+                        </div>
+                        <div class="custom-input">
+                            <input type="number" id="custom-count-input" min="1" max="1000" placeholder="自定义数量">
+                            <button id="set-custom-count">设置</button>
+                        </div>
                     </div>
-                    <div class="custom-input">
-                        <input type="number" id="custom-count-input" min="1" max="1000" placeholder="自定义数量">
-                        <button id="set-custom-count">设置</button>
+                </div>
+                <div class="date-mode-options" style="display: none;">
+                    <div class="date-options-container">
+                        <div class="date-inputs-full">
+                            <label class="date-label">日期范围:</label>
+                            <div class="date-inputs">
+                                <div class="date-input-group">
+                                    <input type="date" id="start-date" placeholder="开始日期">
+                                </div>
+                                <span class="date-range-separator">-</span>
+                                <div class="date-input-group">
+                                    <input type="date" id="end-date" placeholder="结束日期">
+                                </div>
+                            </div>
+                        </div>
+                        <button id="load-date-data">加载数据</button>
                     </div>
                 </div>
             </div>
+        </div>
             
             <!-- 数据解析选项卡内容 -->
             <div class="tab-pane" id="data-mode-pane">
