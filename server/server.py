@@ -16,6 +16,7 @@ import atexit
 from queue import Queue
 import re
 from datetime import datetime, date
+from contextlib import contextmanager
 
 # 读取配置文件
 config = configparser.ConfigParser()
@@ -42,57 +43,10 @@ CONNECTION_POOL_SIZE = int(config.get('mysql', 'connection_pool_size', fallback=
 connection_pool = Queue(maxsize=CONNECTION_POOL_SIZE)
 connection_lock = threading.Lock()
 
-# 创建初始连接池
-def create_connection_pool():
-    print(f"[INFO] 初始化数据库连接池，大小: {CONNECTION_POOL_SIZE}")
-    for _ in range(CONNECTION_POOL_SIZE):
-        try:
-            conn = pymysql.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                database=DB_NAME,
-                charset='utf8mb4',
-                connect_timeout=5,
-                read_timeout=5,
-                write_timeout=5,
-                autocommit=True
-            )
-            connection_pool.put(conn)
-        except Exception as e:
-            print(f"[ERROR] 创建连接池失败: {str(e)}")
-            traceback.print_exc()
-
-# 关闭所有连接
-def close_all_connections():
-    print("[INFO] 关闭所有数据库连接")
-    with connection_lock:
-        while not connection_pool.empty():
-            try:
-                conn = connection_pool.get_nowait()
-                conn.close()
-            except:
-                pass
-
-# 注册退出处理
-atexit.register(close_all_connections)
-
-# 初始化连接池
-create_connection_pool()
-
-# 数据库连接函数（使用连接池）
-def get_db_connection():
-    # 获取连接池中的连接
-    try:
-        conn = connection_pool.get(timeout=2)  # 减少超时时间到2秒
-        print("[INFO] 从连接池获取数据库连接")
-        # 检查连接是否有效
-        conn.ping(reconnect=True)
-        return conn
-    except:
-        print("[WARN] 连接池获取连接超时或连接无效，创建新连接")
-        # 如果无法从连接池获取连接，创建新连接
+class DatabaseManager:
+    @staticmethod
+    def create_connection():
+        """创建一个新的数据库连接"""
         return pymysql.connect(
             host=DB_HOST,
             port=DB_PORT,
@@ -100,73 +54,305 @@ def get_db_connection():
             password=DB_PASSWORD,
             database=DB_NAME,
             charset='utf8mb4',
-            connect_timeout=3,
-            read_timeout=10,  # 增加读取超时时间
+            connect_timeout=5,
+            read_timeout=5,
             write_timeout=5,
             autocommit=True
         )
-
-# 释放数据库连接
-def release_db_connection(conn):
-    if conn is None:
-        return
-    try:
-        # 检查连接是否有效
-        conn.ping(reconnect=True)
-        # 将连接放回连接池
-        if not connection_pool.full():
-            connection_pool.put_nowait(conn)
-            print("[INFO] 数据库连接已返回连接池")
-        else:
-            conn.close()
-            print("[INFO] 连接池已满，直接关闭连接")
-    except Exception as e:
-        print(f"[WARN] 连接无效，丢弃: {str(e)}")
-        # 连接无效，直接丢弃
+    
+    @staticmethod
+    def initialize_connection_pool():
+        """初始化数据库连接池"""
+        print(f"[INFO] 初始化数据库连接池，大小: {CONNECTION_POOL_SIZE}")
+        for _ in range(CONNECTION_POOL_SIZE):
+            try:
+                conn = DatabaseManager.create_connection()
+                connection_pool.put(conn)
+            except Exception as e:
+                print(f"[ERROR] 创建连接池失败: {str(e)}")
+                traceback.print_exc()
+    
+    @staticmethod
+    def close_all_connections():
+        """关闭所有数据库连接"""
+        print("[INFO] 关闭所有数据库连接")
+        with connection_lock:
+            while not connection_pool.empty():
+                try:
+                    conn = connection_pool.get_nowait()
+                    conn.close()
+                except:
+                    pass
+    
+    @staticmethod
+    @contextmanager
+    def get_connection():
+        """获取数据库连接的上下文管理器"""
+        conn = None
         try:
-            conn.close()
+            # 获取连接池中的连接
+            conn = connection_pool.get(timeout=2)  # 减少超时时间到2秒
+            print("[INFO] 从连接池获取数据库连接")
+            # 检查连接是否有效
+            conn.ping(reconnect=True)
         except:
-            pass
-
-# 首屏数据接口
-def get_first_screen_data():
-    print(f"[INFO] 开始获取首屏数据，请求数量: {FIRST_SCREEN_COUNT}")
-    conn = None
-    try:
-        conn = get_db_connection()
+            print("[WARN] 连接池获取连接超时或连接无效，创建新连接")
+            # 如果无法从连接池获取连接，创建新连接
+            conn = DatabaseManager.create_connection()
+        
+        try:
+            yield conn
+        finally:
+            DatabaseManager.release_connection(conn)
+    
+    @staticmethod
+    def release_connection(conn):
+        """释放数据库连接"""
         if conn is None:
-            print("[ERROR] 无法获取数据库连接")
-            return {"code": "500", "error": "无法获取数据库连接"}
-        print("[INFO] 数据库连接建立成功")
-        with conn.cursor() as cursor:
-            # 验证FIRST_SCREEN_COUNT是否在安全范围内
-            safe_limit = min(FIRST_SCREEN_COUNT, 100)  # 限制最大返回数量
-            # 随机获取配置数量的设备ID
-            sql = "SELECT id FROM device ORDER BY RAND() LIMIT %s"
-            print(f"[INFO] 执行SQL查询: {sql}")
-            cursor.execute(sql, (safe_limit,))
-            results = cursor.fetchall()
-            device_ids = [str(row[0]) for row in results]
-            print(f"[INFO] 查询完成，获取到 {len(device_ids)} 个设备ID")
-            
-            response = {
-                "code": "200",
-                "total_num": len(device_ids),
-                "device_ids": device_ids
+            return
+        try:
+            # 检查连接是否有效
+            conn.ping(reconnect=True)
+            # 将连接放回连接池
+            if not connection_pool.full():
+                connection_pool.put_nowait(conn)
+                print("[INFO] 数据库连接已返回连接池")
+            else:
+                conn.close()
+                print("[INFO] 连接池已满，直接关闭连接")
+        except Exception as e:
+            print(f"[WARN] 连接无效，丢弃: {str(e)}")
+            # 连接无效，直接丢弃
+            try:
+                conn.close()
+            except:
+                pass
+
+# 注册退出处理
+atexit.register(DatabaseManager.close_all_connections)
+
+# 初始化连接池
+DatabaseManager.initialize_connection_pool()
+
+# 数据查询类
+class DataQuery:
+    @staticmethod
+    def get_first_screen_data():
+        """首屏数据接口"""
+        print(f"[INFO] 开始获取首屏数据，请求数量: {FIRST_SCREEN_COUNT}")
+        try:
+            with DatabaseManager.get_connection() as conn:
+                print("[INFO] 数据库连接建立成功")
+                with conn.cursor() as cursor:
+                    # 验证FIRST_SCREEN_COUNT是否在安全范围内
+                    safe_limit = min(FIRST_SCREEN_COUNT, 100)  # 限制最大返回数量
+                    # 随机获取配置数量的设备ID
+                    sql = "SELECT id FROM device ORDER BY RAND() LIMIT %s"
+                    print(f"[INFO] 执行SQL查询: {sql}")
+                    cursor.execute(sql, (safe_limit,))
+                    results = cursor.fetchall()
+                    device_ids = [str(row[0]) for row in results]
+                    print(f"[INFO] 查询完成，获取到 {len(device_ids)} 个设备ID")
+                    
+                    response = {
+                        "code": "200",
+                        "total_num": len(device_ids),
+                        "device_ids": device_ids
+                    }
+                    print(f"[INFO] 首屏数据响应: {response}")
+                    return response
+        except Exception as e:
+            print(f"[ERROR] 获取首屏数据时出错: {str(e)}")
+            traceback.print_exc()
+            return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
+
+    @staticmethod
+    def get_device_info(cursor, device_id):
+        """获取设备基本信息"""
+        device_sql = """
+            SELECT equipmentName, installationSite, equipmentType, ratio, rate, acctId, status, updated_at, id
+            FROM device WHERE id = %s
+        """
+        print(f"[INFO] 查询设备信息，SQL: {device_sql.strip()}, 参数: {device_id}")
+        cursor.execute(device_sql, (device_id,))
+        return cursor.fetchone()
+
+    @staticmethod
+    def get_device_data(device_id, data_num):
+        """检查设备数据接口"""
+        print(f"[INFO] 开始获取设备数据，设备ID: {device_id}, 数据数量: {data_num}")
+        try:
+            with DatabaseManager.get_connection() as conn:
+                print(f"[INFO] 数据库连接建立成功")
+                with conn.cursor() as cursor:
+                    # 获取设备信息
+                    device_info = DataQuery.get_device_info(cursor, device_id)
+                    
+                    if not device_info:
+                        print(f"[WARN] 未找到设备ID为 {device_id} 的设备")
+                        return {"code": "404", "error": "设备未找到"}
+                    print(f"[INFO] 设备信息查询完成")
+                    
+                    # 获取设备读数数据
+                    data_sql = """
+                        SELECT device_id, read_time, total_reading, remainingBalance
+                        FROM data WHERE device_id = %s ORDER BY read_time DESC LIMIT %s
+                    """
+                    print(f"[INFO] 查询设备读数数据，SQL: {data_sql.strip()}, 参数: ({device_id}, {data_num})")
+                    cursor.execute(data_sql, (device_id, data_num))
+                    data_results = cursor.fetchall()
+                    print(f"[INFO] 读数数据查询完成，获取到 {len(data_results)} 条记录")
+                    
+                    # 构造返回数据
+                    rows = []
+                    for row in data_results:
+                        rows.append({
+                            "device_id": str(row[0]),
+                            "read_time": str(row[1]),
+                            "total_reading": str(row[2]),
+                            "remainingBalance": str(row[3])
+                        })
+                    
+                    response = {
+                        "equipmentName": device_info[0],
+                        "device_id": str(device_info[8]),
+                        "installationSite": device_info[1],
+                        "equipmentType": device_info[2],
+                        "ratio": str(device_info[3]),
+                        "rate": str(device_info[4]),
+                        "acctId": device_info[5],
+                        "status": str(device_info[6]),
+                        "updated_at": str(device_info[7]),
+                        "total": len(rows),
+                        "rows": rows,
+                        "code": 200
+                    }
+                    print(f"[INFO] 设备数据响应构建完成")
+                    return response
+        except Exception as e:
+            print(f"[ERROR] 获取设备数据时出错: {str(e)}")
+            traceback.print_exc()
+            return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
+
+    @staticmethod
+    def search_devices(keyword):
+        """搜索设备接口"""
+        print(f"[INFO] 开始搜索设备，关键词: {keyword}")
+        # 检查关键词长度，2个字符以内包括两个字符不允许查询
+        if len(keyword) < 2:
+            print(f"[INFO] 关键词长度不足，返回错误提示")
+            return {
+                "search_status": 1,
+                "error_talk": "请输入两个以上的字符。",
+                "code": 418
             }
-            print(f"[INFO] 首屏数据响应: {response}")
-            return response
-    except Exception as e:
-        print(f"[ERROR] 获取首屏数据时出错: {str(e)}")
-        traceback.print_exc()
-        return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
-    finally:
-        release_db_connection(conn)
+        
+        try:
+            with DatabaseManager.get_connection() as conn:
+                print(f"[INFO] 数据库连接建立成功")
+                with conn.cursor() as cursor:
+                    # 搜索设备
+                    sql = """
+                        SELECT equipmentName, installationSite, id, equipmentType, status
+                        FROM device WHERE equipmentName LIKE %s OR installationSite LIKE %s
+                    """
+                    search_term = f"%{keyword}%"
+                    print(f"[INFO] 执行搜索查询，SQL: {sql.strip()}, 参数: ({search_term}, {search_term})")
+                    cursor.execute(sql, (search_term, search_term))
+                    results = cursor.fetchall()
+                    print(f"[INFO] 搜索完成，找到 {len(results)} 条记录")
+                    
+                    # 构造返回数据
+                    rows = []
+                    for row in results:
+                        rows.append({
+                            "equipmentName": row[0],
+                            "installationSite": row[1],
+                            "device_id": str(row[2]).strip(),
+                            "equipmentType": str(row[3]),
+                            "status": row[4]
+                        })
+                    
+                    response = {
+                        "search_status": 0,
+                        "total": len(rows),
+                        "rows": rows,
+                        "code": 200
+                    }
+                    print(f"[INFO] 搜索响应构建完成: total={len(rows)}")
+                    return response
+        except Exception as e:
+            print(f"[ERROR] 搜索设备时出错: {str(e)}")
+            traceback.print_exc()
+            return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
+
+    @staticmethod
+    def get_device_daily_range_data(device_id, start_day, end_day):
+        """检查设备每日最后数据接口"""
+        print(f"[INFO] 开始获取设备每日数据，设备ID: {device_id}, 开始日期: {start_day}, 结束日期: {end_day}")
+        try:
+            with DatabaseManager.get_connection() as conn:
+                print(f"[INFO] 数据库连接建立成功")
+                with conn.cursor() as cursor:
+                    # 获取设备信息
+                    device_info = DataQuery.get_device_info(cursor, device_id)
+                    
+                    if not device_info:
+                        print(f"[WARN] 未找到设备ID为 {device_id} 的设备")
+                        return {"code": "404", "error": "设备未找到"}
+                    print(f"[INFO] 设备信息查询完成")
+                    
+                    # 获取设备每日最后读数数据
+                    data_sql = """
+                        SELECT device_id, DATE(read_time) as read_date, 
+                               SUBSTRING_INDEX(GROUP_CONCAT(read_time ORDER BY read_time DESC), ',', 1) as last_read_time,
+                               SUBSTRING_INDEX(GROUP_CONCAT(total_reading ORDER BY read_time DESC), ',', 1) as last_total_reading,
+                               SUBSTRING_INDEX(GROUP_CONCAT(remainingBalance ORDER BY read_time DESC), ',', 1) as last_remaining_balance
+                        FROM data 
+                        WHERE device_id = %s AND DATE(read_time) BETWEEN %s AND %s
+                        GROUP BY device_id, DATE(read_time)
+                        ORDER BY read_date DESC
+                    """
+                    print(f"[INFO] 查询设备每日最后读数数据，SQL: {data_sql.strip()}, 参数: ({device_id}, {start_day}, {end_day})")
+                    cursor.execute(data_sql, (device_id, start_day, end_day))
+                    data_results = cursor.fetchall()
+                    print(f"[INFO] 读数数据查询完成，获取到 {len(data_results)} 条记录")
+                    
+                    # 构造返回数据
+                    rows = []
+                    for row in data_results:
+                        rows.append({
+                            "device_id": str(row[0]),
+                            "read_time": str(row[2]),
+                            "total_reading": str(row[3]),
+                            "remainingBalance": str(row[4])
+                        })
+                    
+                    response = {
+                        "equipmentName": device_info[0],
+                        "device_id": str(device_info[8]),
+                        "installationSite": device_info[1],
+                        "equipmentType": device_info[2],
+                        "ratio": str(device_info[3]),
+                        "rate": str(device_info[4]),
+                        "acctId": device_info[5],
+                        "status": str(device_info[6]),
+                        "updated_at": str(device_info[7]),
+                        "total": len(rows),
+                        "rows": rows,
+                        "code": 200
+                    }
+                    print(f"[INFO] 设备每日数据响应构建完成")
+                    return response
+        except Exception as e:
+            print(f"[ERROR] 获取设备每日数据时出错: {str(e)}")
+            traceback.print_exc()
+            return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
 
 # 并行获取多个设备数据
 def get_multiple_device_data(device_ids, data_num):
     def fetch_device_data(device_id):
-        return device_id, get_device_data(device_id, data_num)
+        return device_id, DataQuery.get_device_data(device_id, data_num)
     
     # 使用线程池并行获取设备数据
     futures = [executor.submit(fetch_device_data, device_id) for device_id in device_ids]
@@ -178,212 +364,13 @@ def get_multiple_device_data(device_ids, data_num):
     
     return results
 
-# 检查设备数据接口
-def get_device_data(device_id, data_num):
-    print(f"[INFO] 开始获取设备数据，设备ID: {device_id}, 数据数量: {data_num}")
-    conn = None
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            print("[ERROR] 无法获取数据库连接")
-            return {"code": "500", "error": "无法获取数据库连接"}
-        print(f"[INFO] 数据库连接建立成功")
-        with conn.cursor() as cursor:
-            # 获取设备信息
-            device_sql = """
-                SELECT equipmentName, installationSite, equipmentType, ratio, rate, acctId, status, updated_at, id
-                FROM device WHERE id = %s
-            """
-            print(f"[INFO] 查询设备信息，SQL: {device_sql.strip()}, 参数: {device_id}")
-            cursor.execute(device_sql, (device_id,))
-            device_info = cursor.fetchone()
-            
-            if not device_info:
-                print(f"[WARN] 未找到设备ID为 {device_id} 的设备")
-                return {"code": "404", "error": "设备未找到"}
-            print(f"[INFO] 设备信息查询完成")
-            
-            # 获取设备读数数据
-            data_sql = """
-                SELECT device_id, read_time, total_reading, remainingBalance
-                FROM data WHERE device_id = %s ORDER BY read_time DESC LIMIT %s
-            """
-            print(f"[INFO] 查询设备读数数据，SQL: {data_sql.strip()}, 参数: ({device_id}, {data_num})")
-            cursor.execute(data_sql, (device_id, data_num))
-            data_results = cursor.fetchall()
-            print(f"[INFO] 读数数据查询完成，获取到 {len(data_results)} 条记录")
-            
-            # 构造返回数据
-            rows = []
-            for row in data_results:
-                rows.append({
-                    "device_id": str(row[0]),
-                    "read_time": str(row[1]),
-                    "total_reading": str(row[2]),
-                    "remainingBalance": str(row[3])
-                })
-            
-            response = {
-                "equipmentName": device_info[0],
-                "device_id": str(device_info[8]),
-                "installationSite": device_info[1],
-                "equipmentType": device_info[2],
-                "ratio": str(device_info[3]),
-                "rate": str(device_info[4]),
-                "acctId": device_info[5],
-                "status": str(device_info[6]),
-                "updated_at": str(device_info[7]),
-                "total": len(rows),
-                "rows": rows,
-                "code": 200
-            }
-            print(f"[INFO] 设备数据响应构建完成")
-            return response
-    except Exception as e:
-        print(f"[ERROR] 获取设备数据时出错: {str(e)}")
-        traceback.print_exc()
-        return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
-    finally:
-        release_db_connection(conn)
-
-# 搜索设备接口
-def search_devices(keyword):
-    print(f"[INFO] 开始搜索设备，关键词: {keyword}")
-    # 检查关键词长度，2个字符以内包括两个字符不允许查询
-    if len(keyword) < 2:
-        print(f"[INFO] 关键词长度不足，返回错误提示")
-        return {
-            "search_status": 1,
-            "error_talk": "请输入两个以上的字符。",
-            "code": 418
-        }
-    
-    conn = None
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            print("[ERROR] 无法获取数据库连接")
-            return {"code": "500", "error": "无法获取数据库连接"}
-        print(f"[INFO] 数据库连接建立成功")
-        with conn.cursor() as cursor:
-            # 搜索设备
-            sql = """
-                SELECT equipmentName, installationSite, id, equipmentType, status
-                FROM device WHERE equipmentName LIKE %s OR installationSite LIKE %s
-            """
-            search_term = f"%{keyword}%"
-            print(f"[INFO] 执行搜索查询，SQL: {sql.strip()}, 参数: ({search_term}, {search_term})")
-            cursor.execute(sql, (search_term, search_term))
-            results = cursor.fetchall()
-            print(f"[INFO] 搜索完成，找到 {len(results)} 条记录")
-            
-            # 构造返回数据
-            rows = []
-            for row in results:
-                rows.append({
-                    "equipmentName": row[0],
-                    "installationSite": row[1],
-                    "device_id": str(row[2]).strip(),
-                    "equipmentType": str(row[3]),
-                    "status": row[4]
-                })
-            
-            response = {
-                "search_status": 0,
-                "total": len(rows),
-                "rows": rows,
-                "code": 200
-            }
-            print(f"[INFO] 搜索响应构建完成: total={len(rows)}")
-            return response
-    except Exception as e:
-        print(f"[ERROR] 搜索设备时出错: {str(e)}")
-        traceback.print_exc()
-        return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
-    finally:
-        release_db_connection(conn)
-
-# 检查设备每日最后数据接口
-def get_device_daily_range_data(device_id, start_day, end_day):
-    print(f"[INFO] 开始获取设备每日数据，设备ID: {device_id}, 开始日期: {start_day}, 结束日期: {end_day}")
-    conn = None
-    try:
-        conn = get_db_connection()
-        if conn is None:
-            print("[ERROR] 无法获取数据库连接")
-            return {"code": "500", "error": "无法获取数据库连接"}
-        print(f"[INFO] 数据库连接建立成功")
-        with conn.cursor() as cursor:
-            # 获取设备信息
-            device_sql = """
-                SELECT equipmentName, installationSite, equipmentType, ratio, rate, acctId, status, updated_at, id
-                FROM device WHERE id = %s
-            """
-            print(f"[INFO] 查询设备信息，SQL: {device_sql.strip()}, 参数: {device_id}")
-            cursor.execute(device_sql, (device_id,))
-            device_info = cursor.fetchone()
-            
-            if not device_info:
-                print(f"[WARN] 未找到设备ID为 {device_id} 的设备")
-                return {"code": "404", "error": "设备未找到"}
-            print(f"[INFO] 设备信息查询完成")
-            
-            # 获取设备每日最后读数数据
-            data_sql = """
-                SELECT device_id, DATE(read_time) as read_date, 
-                       SUBSTRING_INDEX(GROUP_CONCAT(read_time ORDER BY read_time DESC), ',', 1) as last_read_time,
-                       SUBSTRING_INDEX(GROUP_CONCAT(total_reading ORDER BY read_time DESC), ',', 1) as last_total_reading,
-                       SUBSTRING_INDEX(GROUP_CONCAT(remainingBalance ORDER BY read_time DESC), ',', 1) as last_remaining_balance
-                FROM data 
-                WHERE device_id = %s AND DATE(read_time) BETWEEN %s AND %s
-                GROUP BY device_id, DATE(read_time)
-                ORDER BY read_date DESC
-            """
-            print(f"[INFO] 查询设备每日最后读数数据，SQL: {data_sql.strip()}, 参数: ({device_id}, {start_day}, {end_day})")
-            cursor.execute(data_sql, (device_id, start_day, end_day))
-            data_results = cursor.fetchall()
-            print(f"[INFO] 读数数据查询完成，获取到 {len(data_results)} 条记录")
-            
-            # 构造返回数据
-            rows = []
-            for row in data_results:
-                rows.append({
-                    "device_id": str(row[0]),
-                    "read_time": str(row[2]),
-                    "total_reading": str(row[3]),
-                    "remainingBalance": str(row[4])
-                })
-            
-            response = {
-                "equipmentName": device_info[0],
-                "device_id": str(device_info[8]),
-                "installationSite": device_info[1],
-                "equipmentType": device_info[2],
-                "ratio": str(device_info[3]),
-                "rate": str(device_info[4]),
-                "acctId": device_info[5],
-                "status": str(device_info[6]),
-                "updated_at": str(device_info[7]),
-                "total": len(rows),
-                "rows": rows,
-                "code": 200
-            }
-            print(f"[INFO] 设备每日数据响应构建完成")
-            return response
-    except Exception as e:
-        print(f"[ERROR] 获取设备每日数据时出错: {str(e)}")
-        traceback.print_exc()
-        return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
-    finally:
-        release_db_connection(conn)
-
 # HTTP请求处理器
 class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         # 获取真实客户端IP
         real_ip = self.headers.get('X-Real-IP') or self.headers.get('X-Forwarded-For') or self.client_address[0]
         print(f"[INFO] 收到GET请求 from {real_ip}: {self.path}")
-        response_data = {}
+        response_data = {"code": "400", "error": "请求参数错误"}
         try:
             # 解析URL和参数
             parsed_url = urlparse(self.path)
@@ -397,15 +384,14 @@ class RequestHandler(BaseHTTPRequestHandler):
             if mode == 'first_screen':
                 # 首屏数据
                 print("[INFO] 处理首屏数据请求")
-                response_data = get_first_screen_data()
+                response_data = DataQuery.get_first_screen_data()
             elif mode == 'check':
                 # 检查设备数据
                 device_id = params.get('device_id', [None])[0]
-                if device_id:
-                    device_id = device_id.strip()  # 去除首尾空格
-                data_num = params.get('data_num', [5])[0]  # 默认5条数据
+                data_num = params.get('data_num', [None])[0]  # 不再设置默认值
                 print(f"[INFO] 处理设备检查请求，设备ID: {device_id}, 数据量: {data_num}")
-                if device_id:
+                if device_id and data_num:  # 必须同时提供device_id和data_num
+                    device_id = device_id.strip()  # 去除首尾空格
                     # 验证device_id格式（允许字母、数字和下划线，限制长度）
                     if not re.match(r'^[a-zA-Z0-9_]+$', device_id) or len(device_id) > 50:
                         print(f"[WARN] 无效的device_id参数: {device_id}")
@@ -418,7 +404,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                                 print(f"[WARN] data_num参数超出范围: {num}")
                                 response_data = {"code": "400", "error": "data_num参数超出范围(1-1000)"}
                             else:
-                                response_data = get_device_data(device_id, num)
+                                response_data = DataQuery.get_device_data(device_id, num)
                         except ValueError:
                             print(f"[WARN] 无效的data_num参数: {data_num}")
                             response_data = {"code": "400", "error": "无效的data_num参数"}
@@ -439,13 +425,15 @@ class RequestHandler(BaseHTTPRequestHandler):
                     else:
                         # 使用datetime模块验证日期格式和有效性
                         try:
+                            datetime.strptime(start_day, '%Y-%m-%d')
+                            datetime.strptime(end_day, '%Y-%m-%d')
                             start_date = datetime.strptime(start_day, '%Y-%m-%d').date()
                             end_date = datetime.strptime(end_day, '%Y-%m-%d').date()
                             if start_date > end_date:
                                 print(f"[WARN] 开始日期 {start_day} 晚于结束日期 {end_day}")
                                 response_data = {"code": "400", "error": "开始日期不能晚于结束日期"}
                             else:
-                                response_data = get_device_daily_range_data(device_id, start_day, end_day)
+                                response_data = DataQuery.get_device_daily_range_data(device_id, start_day, end_day)
                         except ValueError:
                             print(f"[WARN] 日期格式不正确，应为YYYY-MM-DD")
                             response_data = {"code": "400", "error": "日期格式不正确，应为YYYY-MM-DD"}
@@ -462,7 +450,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                         print(f"[WARN] 搜索关键词包含非法字符: {keyword}")
                         response_data = {"code": "400", "error": "搜索关键词包含非法字符"}
                     else:
-                        response_data = search_devices(keyword)
+                        response_data = DataQuery.search_devices(keyword)
                 else:
                     print("[WARN] 缺少key_word参数")
                     response_data = {"code": "400", "error": "缺少key_word参数"}
