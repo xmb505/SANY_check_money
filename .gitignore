@@ -55,3 +55,6 @@ env/
 venv/
 ENV/
 conversation-2025-11-21-161930.txt
+
+# IFLOW folder
+.iflow/
