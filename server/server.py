@@ -15,6 +15,7 @@ from concurrent.futures import ThreadPoolExecutor
 import atexit
 from queue import Queue
 import re
+from datetime import datetime, date
 
 # 读取配置文件
 config = configparser.ConfigParser()
@@ -302,6 +303,80 @@ def search_devices(keyword):
     finally:
         release_db_connection(conn)
 
+# 检查设备每日最后数据接口
+def get_device_daily_range_data(device_id, start_day, end_day):
+    print(f"[INFO] 开始获取设备每日数据，设备ID: {device_id}, 开始日期: {start_day}, 结束日期: {end_day}")
+    conn = None
+    try:
+        conn = get_db_connection()
+        if conn is None:
+            print("[ERROR] 无法获取数据库连接")
+            return {"code": "500", "error": "无法获取数据库连接"}
+        print(f"[INFO] 数据库连接建立成功")
+        with conn.cursor() as cursor:
+            # 获取设备信息
+            device_sql = """
+                SELECT equipmentName, installationSite, equipmentType, ratio, rate, acctId, status, updated_at, id
+                FROM device WHERE id = %s
+            """
+            print(f"[INFO] 查询设备信息，SQL: {device_sql.strip()}, 参数: {device_id}")
+            cursor.execute(device_sql, (device_id,))
+            device_info = cursor.fetchone()
+            
+            if not device_info:
+                print(f"[WARN] 未找到设备ID为 {device_id} 的设备")
+                return {"code": "404", "error": "设备未找到"}
+            print(f"[INFO] 设备信息查询完成")
+            
+            # 获取设备每日最后读数数据
+            data_sql = """
+                SELECT device_id, DATE(read_time) as read_date, 
+                       SUBSTRING_INDEX(GROUP_CONCAT(read_time ORDER BY read_time DESC), ',', 1) as last_read_time,
+                       SUBSTRING_INDEX(GROUP_CONCAT(total_reading ORDER BY read_time DESC), ',', 1) as last_total_reading,
+                       SUBSTRING_INDEX(GROUP_CONCAT(remainingBalance ORDER BY read_time DESC), ',', 1) as last_remaining_balance
+                FROM data 
+                WHERE device_id = %s AND DATE(read_time) BETWEEN %s AND %s
+                GROUP BY device_id, DATE(read_time)
+                ORDER BY read_date DESC
+            """
+            print(f"[INFO] 查询设备每日最后读数数据，SQL: {data_sql.strip()}, 参数: ({device_id}, {start_day}, {end_day})")
+            cursor.execute(data_sql, (device_id, start_day, end_day))
+            data_results = cursor.fetchall()
+            print(f"[INFO] 读数数据查询完成，获取到 {len(data_results)} 条记录")
+            
+            # 构造返回数据
+            rows = []
+            for row in data_results:
+                rows.append({
+                    "device_id": str(row[0]),
+                    "read_time": str(row[2]),
+                    "total_reading": str(row[3]),
+                    "remainingBalance": str(row[4])
+                })
+            
+            response = {
+                "equipmentName": device_info[0],
+                "device_id": str(device_info[8]),
+                "installationSite": device_info[1],
+                "equipmentType": device_info[2],
+                "ratio": str(device_info[3]),
+                "rate": str(device_info[4]),
+                "acctId": device_info[5],
+                "status": str(device_info[6]),
+                "updated_at": str(device_info[7]),
+                "total": len(rows),
+                "rows": rows,
+                "code": 200
+            }
+            print(f"[INFO] 设备每日数据响应构建完成")
+            return response
+    except Exception as e:
+        print(f"[ERROR] 获取设备每日数据时出错: {str(e)}")
+        traceback.print_exc()
+        return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
+    finally:
+        release_db_connection(conn)
+
 # HTTP请求处理器
 class RequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -350,6 +425,33 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     print("[WARN] 缺少device_id参数")
                     response_data = {"code": "400", "error": "缺少device_id参数"}
+            elif mode == 'check_daily_range':
+                # 检查设备每日最后数据
+                device_id = params.get('device_id', [None])[0]
+                start_day = params.get('start_day', [None])[0]
+                end_day = params.get('end_day', [None])[0]
+                print(f"[INFO] 处理设备每日数据请求，设备ID: {device_id}, 开始日期: {start_day}, 结束日期: {end_day}")
+                if device_id and start_day and end_day:
+                    # 验证device_id格式（允许字母、数字和下划线，限制长度）
+                    if not re.match(r'^[a-zA-Z0-9_]+$', device_id) or len(device_id) > 50:
+                        print(f"[WARN] 无效的device_id参数: {device_id}")
+                        response_data = {"code": "400", "error": "无效的device_id参数"}
+                    else:
+                        # 使用datetime模块验证日期格式和有效性
+                        try:
+                            start_date = datetime.strptime(start_day, '%Y-%m-%d').date()
+                            end_date = datetime.strptime(end_day, '%Y-%m-%d').date()
+                            if start_date > end_date:
+                                print(f"[WARN] 开始日期 {start_day} 晚于结束日期 {end_day}")
+                                response_data = {"code": "400", "error": "开始日期不能晚于结束日期"}
+                            else:
+                                response_data = get_device_daily_range_data(device_id, start_day, end_day)
+                        except ValueError:
+                            print(f"[WARN] 日期格式不正确，应为YYYY-MM-DD")
+                            response_data = {"code": "400", "error": "日期格式不正确，应为YYYY-MM-DD"}
+                else:
+                    print("[WARN] 缺少必要参数 device_id, start_day 或 end_day")
+                    response_data = {"code": "400", "error": "缺少必要参数 device_id, start_day 或 end_day"}
             elif mode == 'search':
                 # 搜索设备
                 keyword = params.get('key_word', [None])[0]
