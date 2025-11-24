@@ -437,6 +437,15 @@ function initDataCountButtons() {
     updateDataModeButton();
     updateModeButton();  // 确保数据解析模式按钮也被正确激活
     
+    // 根据当前数据模式显示相应的选项卡内容
+    if (currentDataMode === 'count') {
+        countModeOptions.style.display = 'block';
+        dateModeOptions.style.display = 'none';
+    } else {
+        countModeOptions.style.display = 'none';
+        dateModeOptions.style.display = 'block';
+    }
+    
     // 设置默认日期（今天和一周前）
     const today = new Date().toISOString().split('T')[0];
     const weekAgo = new Date();
