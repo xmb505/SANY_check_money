@@ -50,7 +50,7 @@ NEW_CELEBRATE_DEVICE_LATEST_READ_FIELD = config.get('aoksender', 'new_celebrate_
 executor = ThreadPoolExecutor(max_workers=10)
 
 # 连接池设置
-CONNECTION_POOL_SIZE = 10
+CONNECTION_POOL_SIZE = int(config.get('mysql', 'connection_pool_size', fallback=30))
 connection_pool = Queue(maxsize=CONNECTION_POOL_SIZE)
 connection_lock = threading.Lock()
 
@@ -104,7 +104,7 @@ create_connection_pool()
 def get_db_connection():
     # 获取连接池中的连接
     try:
-        conn = connection_pool.get(timeout=10)
+        conn = connection_pool.get(timeout=2)  # 减少超时时间到2秒
         print("[INFO] 从连接池获取数据库连接")
         # 检查连接是否有效
         try:
@@ -118,7 +118,7 @@ def get_db_connection():
                     password=DB_PASSWORD,
                     database=DB_NAME,
                     charset='utf8mb4',
-                    connect_timeout=30,
+                    connect_timeout=10,
                     read_timeout=30,
                     write_timeout=30,
                     autocommit=True,
@@ -144,7 +144,7 @@ def get_db_connection():
                 password=DB_PASSWORD,
                 database=DB_NAME,
                 charset='utf8mb4',
-                connect_timeout=30,
+                connect_timeout=10,
                 read_timeout=30,
                 write_timeout=30,
                 autocommit=True,
@@ -152,7 +152,7 @@ def get_db_connection():
             )
         return conn
     except:
-        print("[WARN] 连接池获取连接超时，创建新连接")
+        print("[WARN] 连接池获取连接超时或连接无效，创建新连接")
         # 如果无法从连接池获取连接，创建新连接
         try:
             return pymysql.connect(
@@ -162,7 +162,7 @@ def get_db_connection():
                 password=DB_PASSWORD,
                 database=DB_NAME,
                 charset='utf8mb4',
-                connect_timeout=30,
+                connect_timeout=10,
                 read_timeout=30,
                 write_timeout=30,
                 autocommit=True,
@@ -175,6 +175,8 @@ def get_db_connection():
 
 # 释放数据库连接
 def release_db_connection(conn):
+    if conn is None:
+        return
     try:
         # 检查连接是否有效
         if conn.open:
@@ -185,11 +187,12 @@ def release_db_connection(conn):
             cursor.close()
             # 将连接放回连接池
             if not connection_pool.full():
-                connection_pool.put(conn)
+                connection_pool.put_nowait(conn)
+                print("[INFO] 数据库连接已返回连接池")
             else:
                 # 如果连接池已满，关闭连接
                 conn.close()
-            print("[INFO] 数据库连接已返回连接池")
+                print("[INFO] 连接池已满，直接关闭连接")
         else:
             print("[WARN] 连接已关闭，不再返回连接池")
             try:

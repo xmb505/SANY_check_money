@@ -37,7 +37,7 @@ FIRST_SCREEN_COUNT = int(config.get('config', 'first_screen_count'))
 executor = ThreadPoolExecutor(max_workers=10)
 
 # 连接池设置
-CONNECTION_POOL_SIZE = 10
+CONNECTION_POOL_SIZE = int(config.get('mysql', 'connection_pool_size', fallback=30))
 connection_pool = Queue(maxsize=CONNECTION_POOL_SIZE)
 connection_lock = threading.Lock()
 
@@ -84,11 +84,13 @@ create_connection_pool()
 def get_db_connection():
     # 获取连接池中的连接
     try:
-        conn = connection_pool.get(timeout=5)
+        conn = connection_pool.get(timeout=2)  # 减少超时时间到2秒
         print("[INFO] 从连接池获取数据库连接")
+        # 检查连接是否有效
+        conn.ping(reconnect=True)
         return conn
     except:
-        print("[WARN] 连接池获取连接超时，创建新连接")
+        print("[WARN] 连接池获取连接超时或连接无效，创建新连接")
         # 如果无法从连接池获取连接，创建新连接
         return pymysql.connect(
             host=DB_HOST,
@@ -97,40 +99,33 @@ def get_db_connection():
             password=DB_PASSWORD,
             database=DB_NAME,
             charset='utf8mb4',
-            connect_timeout=5,
-            read_timeout=5,
+            connect_timeout=3,
+            read_timeout=10,  # 增加读取超时时间
             write_timeout=5,
             autocommit=True
         )
 
 # 释放数据库连接
 def release_db_connection(conn):
+    if conn is None:
+        return
     try:
         # 检查连接是否有效
         conn.ping(reconnect=True)
         # 将连接放回连接池
-        connection_pool.put(conn)
-        print("[INFO] 数据库连接已返回连接池")
+        if not connection_pool.full():
+            connection_pool.put_nowait(conn)
+            print("[INFO] 数据库连接已返回连接池")
+        else:
+            conn.close()
+            print("[INFO] 连接池已满，直接关闭连接")
     except Exception as e:
-        print(f"[WARN] 连接无效，创建新连接替换: {str(e)}")
-        # 连接无效，创建新连接替换
+        print(f"[WARN] 连接无效，丢弃: {str(e)}")
+        # 连接无效，直接丢弃
         try:
-            new_conn = pymysql.connect(
-                host=DB_HOST,
-                port=DB_PORT,
-                user=DB_USER,
-                password=DB_PASSWORD,
-                database=DB_NAME,
-                charset='utf8mb4',
-                connect_timeout=5,
-                read_timeout=5,
-                write_timeout=5,
-                autocommit=True
-            )
-            connection_pool.put(new_conn)
-        except Exception as e:
-            print(f"[ERROR] 创建替换连接失败: {str(e)}")
-            traceback.print_exc()
+            conn.close()
+        except:
+            pass
 
 # 首屏数据接口
 def get_first_screen_data():
@@ -138,6 +133,9 @@ def get_first_screen_data():
     conn = None
     try:
         conn = get_db_connection()
+        if conn is None:
+            print("[ERROR] 无法获取数据库连接")
+            return {"code": "500", "error": "无法获取数据库连接"}
         print("[INFO] 数据库连接建立成功")
         with conn.cursor() as cursor:
             # 验证FIRST_SCREEN_COUNT是否在安全范围内
@@ -162,9 +160,7 @@ def get_first_screen_data():
         traceback.print_exc()
         return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
     finally:
-        if conn:
-            release_db_connection(conn)
-            print("[INFO] 数据库连接已释放")
+        release_db_connection(conn)
 
 # 并行获取多个设备数据
 def get_multiple_device_data(device_ids, data_num):
@@ -187,6 +183,9 @@ def get_device_data(device_id, data_num):
     conn = None
     try:
         conn = get_db_connection()
+        if conn is None:
+            print("[ERROR] 无法获取数据库连接")
+            return {"code": "500", "error": "无法获取数据库连接"}
         print(f"[INFO] 数据库连接建立成功")
         with conn.cursor() as cursor:
             # 获取设备信息
@@ -244,9 +243,7 @@ def get_device_data(device_id, data_num):
         traceback.print_exc()
         return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
     finally:
-        if conn:
-            release_db_connection(conn)
-            print("[INFO] 数据库连接已释放")
+        release_db_connection(conn)
 
 # 搜索设备接口
 def search_devices(keyword):
@@ -263,6 +260,9 @@ def search_devices(keyword):
     conn = None
     try:
         conn = get_db_connection()
+        if conn is None:
+            print("[ERROR] 无法获取数据库连接")
+            return {"code": "500", "error": "无法获取数据库连接"}
         print(f"[INFO] 数据库连接建立成功")
         with conn.cursor() as cursor:
             # 搜索设备
@@ -300,9 +300,7 @@ def search_devices(keyword):
         traceback.print_exc()
         return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
     finally:
-        if conn:
-            release_db_connection(conn)
-            print("[INFO] 数据库连接已释放")
+        release_db_connection(conn)
 
 # HTTP请求处理器
 class RequestHandler(BaseHTTPRequestHandler):
@@ -376,19 +374,24 @@ class RequestHandler(BaseHTTPRequestHandler):
             traceback.print_exc()
             response_data = {"code": "500", "error": f"服务器内部错误: {str(e)}"}
         finally:
-            # 设置响应头
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')  # 允许跨域
-            self.end_headers()
-            
-            # 发送响应
-            print(f"[INFO] 发送响应，响应长度: {len(json.dumps(response_data, ensure_ascii=False))}")
-            self.wfile.write(json.dumps(response_data, ensure_ascii=False).encode('utf-8'))
-            
-            # 确保数据发送完成并关闭连接
-            self.wfile.flush()
-            print("[INFO] 响应发送完成")
+            try:
+                # 设置响应头
+                self.send_response(200)
+                self.send_header('Content-type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')  # 允许跨域
+                self.end_headers()
+                
+                # 发送响应
+                response_str = json.dumps(response_data, ensure_ascii=False)
+                print(f"[INFO] 发送响应，响应长度: {len(response_str)}")
+                self.wfile.write(response_str.encode('utf-8'))
+                
+                # 确保数据发送完成
+                self.wfile.flush()
+                print("[INFO] 响应发送完成")
+            except Exception as e:
+                print(f"[ERROR] 发送响应时出错: {str(e)}")
+                # 不要在这里抛出异常，避免影响连接释放
 
 # 启动服务器
 if __name__ == '__main__':
