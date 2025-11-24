@@ -13,11 +13,11 @@ import sys
 import os
 import traceback
 import time
-from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 import atexit
 from queue import Queue
 import threading
+from decimal import Decimal
 
 # 读取配置文件
 config = configparser.ConfigParser()
@@ -636,8 +636,8 @@ def request_unsubscribe(email, device_id, equipment_type):
     finally:
         release_db_connection(conn)
 
-def send_verification_email(email, verifi_code, device_info):
-    """发送验证码邮件"""
+def _send_email_via_aoksend(email, template_data, template_id, template_type):
+    """通过Aoksend发送邮件的通用函数"""
     import subprocess
     import json
     
@@ -656,26 +656,14 @@ def send_verification_email(email, verifi_code, device_info):
             aoksend_config = {
                 'api_url': config.get('aoksender', 'server', fallback='https://www.aoksend.com/index/api/send_email'),
                 'app_key': config.get('aoksender', 'app_key'),
-                'template_id': config.get('aoksender', 'template_id'),
+                'template_id': template_id,
                 'reply_to': config.get('aoksender', 'reply_to', fallback=None),
                 'alias': config.get('aoksender', 'alias', fallback='新毛云'),
-                'attachment': config.get('aoksender', 'attachment', fallback=None),
-                'verifi_code_field': config.get('aoksender', 'verifi_code', fallback='code'),
-                'verifi_email_statu_field': config.get('aoksender', 'verifi_email_statu', fallback='email_mode')
+                'attachment': config.get('aoksender', 'attachment', fallback=None)
             }
             
             if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
                 aoksend_config['api_url'] = 'https://www.aoksend.com/index/api/send_email'
-            
-            # 构造模板数据
-            template_data = {
-                'email': email,
-                aoksend_config['verifi_code_field']: verifi_code,  # 使用配置的字段名
-                aoksend_config['verifi_email_statu_field']: '注册',  # 使用配置的字段名发送操作类型
-                'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
-                'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
-                'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
-            }
             
             # 构建命令行参数
             cmd = [
@@ -683,183 +671,6 @@ def send_verification_email(email, verifi_code, device_info):
                 '--api-url', aoksend_config['api_url'],
                 '--app-key', aoksend_config['app_key'],
                 '--template-id', aoksend_config['template_id'],
-                '--to', email
-            ]
-            
-            if aoksend_config['reply_to']:
-                cmd.extend(['--reply-to', aoksend_config['reply_to']])
-            
-            if aoksend_config['alias']:
-                cmd.extend(['--alias', aoksend_config['alias']])
-            
-            cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False)])
-            
-            if aoksend_config['attachment']:
-                cmd.extend(['--attachment', aoksend_config['attachment']])
-            
-            # 执行命令
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
-            
-            if result.returncode == 0:
-                print(f"[INFO] 验证码邮件发送成功到 {email}")
-                # 记录邮件发送
-                record_email_sent(email)
-                return True
-            else:
-                print(f"[ERROR] 邮件发送失败: {result.stderr}")
-                return False
-        except Exception as e:
-            print(f"[ERROR] 发送邮件时出错: {str(e)}")
-            return False
-    
-    # 使用线程池并发处理邮件发送
-    future = executor.submit(_send_email)
-    return future.result()
-
-def send_change_email(email, change_code, device_info):
-    """发送解绑验证码邮件"""
-    import subprocess
-    import json
-    
-    # 检查邮件发送频率限制
-    emails_sent_today = count_emails_sent_today(email)
-    if emails_sent_today >= EMAIL_DAILY_LIMIT:
-        print(f"[WARN] 邮件发送频率超限，邮箱 {email} 今日已发送 {emails_sent_today} 封邮件")
-        return False
-    
-    def _send_change_email():
-        try:
-            # 从配置文件读取Aoksend配置
-            config = configparser.ConfigParser()
-            config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
-            
-            aoksend_config = {
-                'api_url': config.get('aoksender', 'server', fallback='https://www.aoksend.com/index/api/send_email'),
-                'app_key': config.get('aoksender', 'app_key'),
-                'change_template_id': config.get('aoksender', 'change_template_id', fallback=config.get('aoksender', 'template_id')),
-                'reply_to': config.get('aoksender', 'reply_to', fallback=None),
-                'alias': config.get('aoksender', 'alias', fallback='新毛云'),
-                'attachment': config.get('aoksender', 'attachment', fallback=None),
-                'change_code_field': config.get('aoksender', 'change_code', fallback='code'),
-                'change_email_statu_field': config.get('aoksender', 'change_email_statu', fallback='email_mode')
-            }
-            
-            if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
-                aoksend_config['api_url'] = 'https://www.aoksend.com/index/api/send_email'
-            
-            # 构造模板数据
-            template_data = {
-                'email': email,
-                aoksend_config['change_code_field']: change_code,  # 使用配置的字段名
-                aoksend_config['change_email_statu_field']: '解绑',  # 使用配置的字段名发送操作类型
-                'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
-                'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
-                'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
-            }
-            
-            # 构建命令行参数
-            cmd = [
-                sys.executable, 'aoksend-api-cli.py',
-                '--api-url', aoksend_config['api_url'],
-                '--app-key', aoksend_config['app_key'],
-                '--template-id', aoksend_config['change_template_id'],
-                '--to', email
-            ]
-            
-            if aoksend_config['reply_to']:
-                cmd.extend(['--reply-to', aoksend_config['reply_to']])
-            
-            if aoksend_config['alias']:
-                cmd.extend(['--alias', aoksend_config['alias']])
-            
-            cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False)])
-            
-            if aoksend_config['attachment']:
-                cmd.extend(['--attachment', aoksend_config['attachment']])
-            
-            # 执行命令
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
-            
-            if result.returncode == 0:
-                print(f"[INFO] 解绑验证码邮件发送成功到 {email}")
-                # 记录邮件发送
-                record_email_sent(email)
-                return True
-            else:
-                print(f"[ERROR] 解绑邮件发送失败: {result.stderr}")
-                return False
-        except Exception as e:
-            print(f"[ERROR] 发送解绑邮件时出错: {str(e)}")
-            return False
-    
-    # 使用线程池并发处理邮件发送
-    future = executor.submit(_send_change_email)
-    return future.result()
-
-
-def send_celebration_email(email, device_id, device_info):
-    """发送注册庆祝邮件"""
-    import subprocess
-    import json
-    from decimal import Decimal
-    
-    # 检查邮件发送频率限制
-    emails_sent_today = count_emails_sent_today(email)
-    if emails_sent_today >= EMAIL_DAILY_LIMIT:
-        print(f"[WARN] 邮件发送频率超限，邮箱 {email} 今日已发送 {emails_sent_today} 封邮件")
-        return False
-    
-    def _send_celebration_email():
-        try:
-            # 获取设备最新数据
-            latest_data = get_latest_device_data(device_id)
-            if not latest_data:
-                print(f"[WARNING] 无法获取设备 {device_id} 的最新数据")
-                latest_data = {
-                    'total_reading': 'N/A',
-                    'remainingBalance': 'N/A',
-                    'equipmentStatus': 'N/A',
-                    'read_time': 'N/A'
-                }
-            
-            # 从配置文件获取Aoksend配置
-            config = configparser.ConfigParser()
-            config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
-            
-            aoksend_config = {
-                'api_url': config.get('aoksender', 'server', fallback='https://www.aoksend.com/index/api/send_email'),
-                'app_key': config.get('aoksender', 'app_key'),
-                'celebrate_template_id': config.get('aoksender', 'new_celebrate_template_id', fallback=config.get('aoksender', 'template_id')),
-                'reply_to': config.get('aoksender', 'reply_to', fallback=None),
-                'alias': config.get('aoksender', 'alias', fallback='新毛云'),
-                'attachment': config.get('aoksender', 'attachment', fallback=None),
-                'title_field': config.get('aoksender', 'new_celebrate_title', fallback='title'),
-                'device_name_field': config.get('aoksender', 'new_celebrate_device_name', fallback='acctName'),
-                'device_balance_field': config.get('aoksender', 'new_celebrate_device_balance', fallback='remainingBalance'),
-                'device_check_time_field': config.get('aoksender', 'new_celebrate_device_check_time', fallback='currentDealDate'),
-                'device_statu_field': config.get('aoksender', 'new_celebrate_device_statu', fallback='equipmentStatus'),
-                'device_latest_read_field': config.get('aoksender', 'new_celebrate_device_latest_read', fallback='equipmentLatestLarge')
-            }
-            
-            if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
-                aoksend_config['api_url'] = 'https://www.aoksend.com/index/api/send_email'
-            
-            # 构造模板数据，处理Decimal类型
-            template_data = {
-                aoksend_config['title_field']: '恭喜注册成功，现在是你邮箱绑定的设备情况',
-                aoksend_config['device_name_field']: device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
-                aoksend_config['device_balance_field']: float(latest_data['remainingBalance']) if isinstance(latest_data['remainingBalance'], Decimal) else latest_data['remainingBalance'],
-                aoksend_config['device_check_time_field']: str(latest_data['read_time']),
-                aoksend_config['device_statu_field']: latest_data['equipmentStatus'],
-                aoksend_config['device_latest_read_field']: float(latest_data['total_reading']) if isinstance(latest_data['total_reading'], Decimal) else latest_data['total_reading']
-            }
-            
-            # 构建命令行参数
-            cmd = [
-                sys.executable, 'aoksend-api-cli.py',
-                '--api-url', aoksend_config['api_url'],
-                '--app-key', aoksend_config['app_key'],
-                '--template-id', aoksend_config['celebrate_template_id'],
                 '--to', email
             ]
             
@@ -878,20 +689,107 @@ def send_celebration_email(email, device_id, device_info):
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
             
             if result.returncode == 0:
-                print(f"[INFO] 注册庆祝邮件发送成功到 {email}")
+                print(f"[INFO] {template_type}邮件发送成功到 {email}")
                 # 记录邮件发送
                 record_email_sent(email)
                 return True
             else:
-                print(f"[ERROR] 注册庆祝邮件发送失败: {result.stderr}")
+                print(f"[ERROR] {template_type}邮件发送失败: {result.stderr}")
                 return False
         except Exception as e:
-            print(f"[ERROR] 发送注册庆祝邮件时出错: {str(e)}")
+            print(f"[ERROR] 发送邮件时出错: {str(e)}")
             return False
     
     # 使用线程池并发处理邮件发送
-    future = executor.submit(_send_celebration_email)
+    future = executor.submit(_send_email)
     return future.result()
+
+def send_verification_email(email, verifi_code, device_info):
+    """发送验证码邮件"""
+    # 从配置文件读取Aoksend配置
+    config = configparser.ConfigParser()
+    config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
+    
+    aoksend_config = {
+        'template_id': config.get('aoksender', 'template_id'),
+        'verifi_code_field': config.get('aoksender', 'verifi_code', fallback='code'),
+        'verifi_email_statu_field': config.get('aoksender', 'verifi_email_statu', fallback='email_mode')
+    }
+    
+    # 构造模板数据
+    template_data = {
+        'email': email,
+        aoksend_config['verifi_code_field']: verifi_code,  # 使用配置的字段名
+        aoksend_config['verifi_email_statu_field']: '注册',  # 使用配置的字段名发送操作类型
+        'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
+        'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
+        'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
+    }
+    
+    return _send_email_via_aoksend(email, template_data, aoksend_config['template_id'], "验证码")
+
+def send_change_email(email, change_code, device_info):
+    """发送解绑验证码邮件"""
+    # 从配置文件读取Aoksend配置
+    config = configparser.ConfigParser()
+    config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
+    
+    aoksend_config = {
+        'change_template_id': config.get('aoksender', 'change_template_id', fallback=config.get('aoksender', 'template_id')),
+        'change_code_field': config.get('aoksender', 'change_code', fallback='code'),
+        'change_email_statu_field': config.get('aoksender', 'change_email_statu', fallback='email_mode')
+    }
+    
+    # 构造模板数据
+    template_data = {
+        'email': email,
+        aoksend_config['change_code_field']: change_code,  # 使用配置的字段名
+        aoksend_config['change_email_statu_field']: '解绑',  # 使用配置的字段名发送操作类型
+        'device_name': device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
+        'device_location': device_info.get('installationSite', '未知位置') if device_info else '未知位置',
+        'equipment_type': '电表' if device_info and device_info.get('equipmentType') == 0 else '水表'
+    }
+    
+    return _send_email_via_aoksend(email, template_data, aoksend_config['change_template_id'], "解绑验证码")
+
+def send_celebration_email(email, device_id, device_info):
+    """发送注册庆祝邮件"""
+    # 获取设备最新数据
+    latest_data = get_latest_device_data(device_id)
+    if not latest_data:
+        print(f"[WARNING] 无法获取设备 {device_id} 的最新数据")
+        latest_data = {
+            'total_reading': 'N/A',
+            'remainingBalance': 'N/A',
+            'equipmentStatus': 'N/A',
+            'read_time': 'N/A'
+        }
+    
+    # 从配置文件获取Aoksend配置
+    config = configparser.ConfigParser()
+    config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
+    
+    aoksend_config = {
+        'celebrate_template_id': config.get('aoksender', 'new_celebrate_template_id', fallback=config.get('aoksender', 'template_id')),
+        'title_field': config.get('aoksender', 'new_celebrate_title', fallback='title'),
+        'device_name_field': config.get('aoksender', 'new_celebrate_device_name', fallback='acctName'),
+        'device_balance_field': config.get('aoksender', 'new_celebrate_device_balance', fallback='remainingBalance'),
+        'device_check_time_field': config.get('aoksender', 'new_celebrate_device_check_time', fallback='currentDealDate'),
+        'device_statu_field': config.get('aoksender', 'new_celebrate_device_statu', fallback='equipmentStatus'),
+        'device_latest_read_field': config.get('aoksender', 'new_celebrate_device_latest_read', fallback='equipmentLatestLarge')
+    }
+    
+    # 构造模板数据，处理Decimal类型
+    template_data = {
+        aoksend_config['title_field']: '恭喜注册成功，现在是你邮箱绑定的设备情况',
+        aoksend_config['device_name_field']: device_info.get('equipmentName', '未知设备') if device_info else '未知设备',
+        aoksend_config['device_balance_field']: float(latest_data['remainingBalance']) if isinstance(latest_data['remainingBalance'], Decimal) else latest_data['remainingBalance'],
+        aoksend_config['device_check_time_field']: str(latest_data['read_time']),
+        aoksend_config['device_statu_field']: latest_data['equipmentStatus'],
+        aoksend_config['device_latest_read_field']: float(latest_data['total_reading']) if isinstance(latest_data['total_reading'], Decimal) else latest_data['total_reading']
+    }
+    
+    return _send_email_via_aoksend(email, template_data, aoksend_config['celebrate_template_id'], "注册庆祝")
 
 def generate_change_code():
     """生成6位解绑验证码"""
@@ -1009,8 +907,6 @@ class RequestHandler(BaseHTTPRequestHandler):
             # 处理不同的模式
             if mode == 'reg':
                 # 注册模式的处理逻辑
-                # ... (现有的注册逻辑)
-                
                 # 验证邮箱格式
                 if not validate_email_format(email):
                     response_data = {"code": 400, "error_text": "邮箱格式不正确"}
