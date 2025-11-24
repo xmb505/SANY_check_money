@@ -1009,6 +1009,403 @@ window.DYNAMIC_CONFIG = {
 36. **高性能处理**：为邮件检查服务添加连接池和线程池优化，提高批量处理效率
 37. **前端功能增强**：增加直接输入验证码按钮，优化订阅提醒信息，改进按钮对齐
 38. **邮件发送频率限制**：通过内存存储机制实现邮件发送频率限制，防止滥用，按日历日（过0点）计算发送次数
+39. **可配置连接池**：支持通过配置文件调整数据库连接池大小，优化性能
+
+## server.py RESTful API 接口文档
+
+### API 概述
+
+`server.py` 提供高性能的 RESTful API 服务，为 Web 前端提供设备数据查询功能。采用 HTTP 协议，返回 JSON 格式数据，支持跨域访问。
+
+**服务器地址**：`http://localhost:8080`（可在配置文件中修改）
+
+**请求方式**：GET
+
+**响应格式**：JSON
+
+**跨域支持**：支持 CORS，允许所有来源访问
+
+### 接口列表
+
+#### 1. 首屏数据接口
+
+**接口路径**：`/`
+
+**请求参数**：
+- `mode=first_screen`：固定值，表示获取首屏数据
+
+**请求示例**：
+```
+http://localhost:8080/?mode=first_screen
+```
+
+**功能说明**：
+获取首页展示的随机设备列表，用于 Web 界面首次加载时展示。从数据库中随机选取配置数量的设备 ID。
+
+**响应参数**：
+- `code`：响应状态码（"200" 表示成功）
+- `total_num`：返回的设备数量
+- `device_ids`：设备 ID 列表（字符串数组）
+
+**成功响应示例**：
+```json
+{
+  "code": "200",
+  "total_num": 6,
+  "device_ids": [
+    "24831",
+    "24901",
+    "25012",
+    "25123",
+    "25234",
+    "25345"
+  ]
+}
+```
+
+**配置项**：
+- 返回数量由配置文件中的 `first_screen_count` 参数控制（默认：6）
+- 最大限制为 100 个设备
+
+---
+
+#### 2. 设备数据查询接口
+
+**接口路径**：`/`
+
+**请求参数**：
+- `mode=check`：固定值，表示查询设备数据
+- `device_id`：设备 ID（必需，字符串）
+- `data_num`：返回的数据条数（可选，整数，默认：5，范围：1-1000）
+
+**请求示例**：
+```
+http://localhost:8080/?mode=check&device_id=24831&data_num=10
+```
+
+**功能说明**：
+查询指定设备的详细信息和历史数据记录。返回设备基本信息和最近的数据读数。
+
+**响应参数**：
+- `code`：响应状态码（200 表示成功，404 表示设备未找到）
+- `equipmentName`：设备名称
+- `device_id`：设备 ID
+- `installationSite`：安装位置
+- `equipmentType`：设备类型（0=电表，1=水表）
+- `ratio`：互感器倍率
+- `rate`：单价
+- `acctId`：财务账户号
+- `status`：设备状态（0=停用，1=启用）
+- `updated_at`：档案更新时间
+- `total`：返回的数据记录数
+- `rows`：数据记录列表
+  - `device_id`：设备 ID
+  - `read_time`：读数时间
+  - `total_reading`：累积读数
+  - `remainingBalance`：剩余余额
+
+**成功响应示例**：
+```json
+{
+  "equipmentName": "7栋6楼楼道中间大厅饮水机",
+  "device_id": "24831",
+  "installationSite": "7栋6楼楼道中间大厅",
+  "equipmentType": 0,
+  "ratio": "40",
+  "rate": "0.6190",
+  "acctId": "20220805000452",
+  "status": "0",
+  "updated_at": "2025-11-12 10:05:46",
+  "total": 10,
+  "rows": [
+    {
+      "device_id": "24831",
+      "read_time": "2025-11-12 10:05:46",
+      "total_reading": "684.92",
+      "remainingBalance": "-2619.789200"
+    },
+    {
+      "device_id": "24831",
+      "read_time": "2025-11-11 10:05:46",
+      "total_reading": "684.12",
+      "remainingBalance": "-2618.989200"
+    }
+  ],
+  "code": 200
+}
+```
+
+**错误响应示例**：
+```json
+{
+  "code": "404",
+  "error": "设备未找到"
+}
+```
+
+**参数验证**：
+- `device_id`：只允许字母、数字和下划线，长度不超过 50
+- `data_num`：必须是 1-1000 之间的整数
+
+---
+
+#### 3. 设备搜索接口
+
+**接口路径**：`/`
+
+**请求参数**：
+- `mode=search`：固定值，表示搜索设备
+- `key_word`：搜索关键词（必需，字符串，最少 2 个字符）
+
+**请求示例**：
+```
+http://localhost:8080/?mode=search&key_word=饮水机
+```
+
+**功能说明**：
+根据关键词搜索设备，支持模糊匹配。在设备名称（equipmentName）和安装位置（installationSite）字段中进行搜索。
+
+**响应参数**：
+- `code`：响应状态码（200 表示成功，418 表示关键词长度不足）
+- `search_status`：搜索状态（0=成功，1=关键词长度不足）
+- `error_talk`：错误提示信息（仅在 search_status=1 时返回）
+- `total`：匹配的设备数量
+- `rows`：设备列表
+  - `equipmentName`：设备名称
+  - `installationSite`：安装位置
+  - `device_id`：设备 ID
+  - `equipmentType`：设备类型
+  - `status`：设备状态
+
+**成功响应示例**：
+```json
+{
+  "search_status": 0,
+  "total": 3,
+  "rows": [
+    {
+      "equipmentName": "7栋6楼楼道中间大厅饮水机",
+      "installationSite": "7栋6楼楼道中间大厅",
+      "device_id": "24831",
+      "equipmentType": "0",
+      "status": "0"
+    },
+    {
+      "equipmentName": "7栋5楼楼道饮水机",
+      "installationSite": "7栋5楼楼道",
+      "device_id": "24832",
+      "equipmentType": "0",
+      "status": "0"
+    }
+  ],
+  "code": 200
+}
+```
+
+**关键词长度不足响应示例**：
+```json
+{
+  "search_status": 1,
+  "error_talk": "请输入两个以上的字符。",
+  "code": 418
+}
+```
+
+**参数验证**：
+- `key_word`：最少 2 个字符，最多 50 个字符
+- 只允许字母、数字、中文和空格
+
+---
+
+### 错误码说明
+
+| 错误码 | 说明 |
+|--------|------|
+| 200 | 请求成功 |
+| 400 | 参数错误（缺少必需参数或参数格式不正确） |
+| 404 | 设备未找到 |
+| 418 | 业务逻辑错误（如关键词长度不足） |
+| 500 | 服务器内部错误（数据库查询错误等） |
+
+### 性能优化特性
+
+1. **连接池机制**：使用数据库连接池，减少连接建立开销
+   - 连接池大小可配置（默认：30）
+   - 连接健康检查和自动恢复
+
+2. **线程池处理**：使用线程池并行处理多个请求
+   - 线程池大小：10
+   - 提高并发处理能力
+
+3. **输入验证**：对所有输入参数进行验证
+   - 防止 SQL 注入攻击
+   - 参数格式和范围检查
+
+4. **查询优化**：
+   - 限制最大返回数据量（1000 条）
+   - 合理使用数据库索引
+
+### 配置参数
+
+**server.ini 配置示例**：
+```ini
+[mysql]
+mysql_server = your_mysql_host
+mysql_port = 3306
+login_user = your_username
+login_passwd = your_password
+db_schema = your_database_name
+# 数据库连接池大小，建议设置为线程池的3倍
+connection_pool_size = 30
+
+[server]
+port = 8080
+
+[config]
+first_screen_count = 6
+```
+
+**配置说明**：
+- `connection_pool_size`：数据库连接池大小（默认：30）
+- `first_screen_count`：首屏显示设备数量（默认：6）
+- `port`：服务器监听端口（默认：8080）
+
+### 使用示例
+
+#### Python 调用示例
+```python
+import requests
+
+# 获取首屏数据
+response = requests.get('http://localhost:8080/?mode=first_screen')
+data = response.json()
+print(f"获取到 {data['total_num']} 个设备")
+
+# 查询设备数据
+response = requests.get('http://localhost:8080/?mode=check&device_id=24831&data_num=10')
+device_data = response.json()
+print(f"设备名称：{device_data['equipmentName']}")
+print(f"余额：{device_data['rows'][0]['remainingBalance']}")
+
+# 搜索设备
+response = requests.get('http://localhost:8080/?mode=search&key_word=饮水机')
+search_results = response.json()
+print(f"找到 {search_results['total']} 个设备")
+```
+
+#### JavaScript 调用示例
+```javascript
+// 获取首屏数据
+fetch('http://localhost:8080/?mode=first_screen')
+  .then(response => response.json())
+  .then(data => {
+    console.log(`获取到 ${data.total_num} 个设备`);
+    console.log('设备ID列表：', data.device_ids);
+  });
+
+// 查询设备数据
+fetch('http://localhost:8080/?mode=check&device_id=24831&data_num=10')
+  .then(response => response.json())
+  .then(deviceData => {
+    console.log('设备名称：', deviceData.equipmentName);
+    console.log('最新余额：', deviceData.rows[0].remainingBalance);
+  });
+
+// 搜索设备
+fetch('http://localhost:8080/?mode=search&key_word=饮水机')
+  .then(response => response.json())
+  .then(searchResults => {
+    console.log(`找到 ${searchResults.total} 个设备`);
+    searchResults.rows.forEach(device => {
+      console.log(`${device.equipmentName} - ${device.installationSite}`);
+    });
+  });
+```
+
+### 日志输出
+
+server.py 会输出详细的运行日志，包括：
+- 请求来源 IP（支持反向代理）
+- 请求路径和参数
+- SQL 查询语句
+- 响应状态码和数据长度
+- 数据库连接池使用情况
+- 错误信息和堆栈跟踪
+
+**日志示例**：
+```
+[INFO] 收到GET请求 from 127.0.0.1: /?mode=check&device_id=24831&data_num=10
+[INFO] 解析参数完成: {'mode': ['check'], 'device_id': ['24831'], 'data_num': ['10']}
+[INFO] 请求模式: check
+[INFO] 处理设备检查请求，设备ID: 24831, 数据量: 10
+[INFO] 从连接池获取数据库连接
+[INFO] 数据库连接建立成功
+[INFO] 查询设备信息，SQL: SELECT equipmentName, installationSite, equipmentType, ratio, rate, acctId, status, updated_at, id FROM device WHERE id = %s, 参数: 24831
+[INFO] 设备信息查询完成
+[INFO] 查询设备读数数据，SQL: SELECT device_id, read_time, total_reading, remainingBalance FROM data WHERE device_id = %s ORDER BY read_time DESC LIMIT %s, 参数: (24831, 10)
+[INFO] 读数数据查询完成，获取到 10 条记录
+[INFO] 设备数据响应构建完成
+[INFO] 请求处理完成，响应数据: 200
+[INFO] 发送响应，响应长度: 1250
+[INFO] 响应发送完成
+[INFO] 数据库连接已返回连接池
+```
+
+### 安全特性
+
+1. **SQL 注入防护**：
+   - 所有数据库查询使用参数化查询
+   - 输入参数严格验证格式和长度
+
+2. **请求频率限制**：
+   - 通过 Web 服务器或反向代理实现
+   - 建议在生产环境部署 Nginx 等反向代理
+
+3. **连接安全**：
+   - 数据库连接使用超时设置
+   - 连接池自动清理无效连接
+
+4. **数据访问控制**：
+   - 建议创建只读数据库用户
+   - 限制单个请求的数据量（最大 1000 条）
+
+### 部署建议
+
+1. **生产环境配置**：
+   - 使用 Nginx/Apache 作为反向代理
+   - 配置 HTTPS 加密传输
+   - 设置请求频率限制
+   - 使用 systemd 管理服务
+
+2. **性能调优**：
+   - 根据服务器配置调整 `connection_pool_size`
+   - 监控数据库连接使用情况
+   - 定期清理日志文件
+
+3. **监控告警**：
+   - 监控服务器端口存活状态
+   - 监控错误日志
+   - 设置异常告警
+
+### 常见问题
+
+**Q: 为什么请求会超时？**
+A: 可能原因：
+- 数据库连接池耗尽，检查连接池配置
+- 查询数据量过大，减少 `data_num` 参数
+- 数据库性能问题，优化数据库索引
+
+**Q: 如何调整连接池大小？**
+A: 修改 `server.ini` 配置文件中的 `connection_pool_size` 参数，建议设置为线程池的 3 倍。
+
+**Q: 支持 HTTPS 吗？**
+A: server.py 本身只支持 HTTP，建议在生产环境使用 Nginx 等反向代理实现 HTTPS。
+
+**Q: 如何查看详细日志？**
+A: 直接查看终端输出，或重定向日志到文件：
+```bash
+python3 server.py > server.log 2>&1
+```
 
 ## 后续扩展建议
 
