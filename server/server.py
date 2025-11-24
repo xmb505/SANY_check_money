@@ -418,6 +418,7 @@ class RequestHandler(BaseHTTPRequestHandler):
                 end_day = params.get('end_day', [None])[0]
                 print(f"[INFO] 处理设备每日数据请求，设备ID: {device_id}, 开始日期: {start_day}, 结束日期: {end_day}")
                 if device_id and start_day and end_day:
+                    device_id = device_id.strip()  # 去除首尾空格
                     # 验证device_id格式（允许字母、数字和下划线，限制长度）
                     if not re.match(r'^[a-zA-Z0-9_]+$', device_id) or len(device_id) > 50:
                         print(f"[WARN] 无效的device_id参数: {device_id}")
