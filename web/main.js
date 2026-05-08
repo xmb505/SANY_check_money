@@ -15,6 +15,9 @@ let dormDataCache = {};            // 宿管模式原始查询结果（全量）
 let isDormMode = false;            // 当前是否处于宿管模式
 let dormFilterOffEnabled = true;   // 是否过滤已关闭电表（默认 true）
 let dormUsageThreshold = 0;        // 用量过滤阈值（kW/h）
+let dormSpikeHours = 0;            // 激增回看小时数，0=未启用
+let dormSpikeThreshold = 0;        // 激增量阈值（kW/h）
+let dormSpikeData = {};            // { device_id: { spikeAmount, spikeEdgeIndices } }
 let prevMode = null;               // 进入宿管模式前的 currentMode，切回时恢复
 
 // 获取API地址
@@ -1014,13 +1017,20 @@ function createDeviceCard(deviceData) {
     // 宿管模式下不显示订阅按钮
     const subscribeHtml = isDormMode ? '' :
         `<button class="subscribe-btn" data-device-id="${deviceData.device_id}" data-equipment-type="${deviceData.equipmentType}">✉️</button>`;
-    
+
+    // 激增标记（仅宿管模式 + 激增筛选启用且有数据时）
+    let spikeBadgeHtml = '';
+    if (isDormMode && dormSpikeHours > 0 && dormSpikeData[deviceData.device_id] && dormSpikeData[deviceData.device_id].spikeAmount > 0) {
+        spikeBadgeHtml = `<div class="spike-badge">↑${dormSpikeData[deviceData.device_id].spikeAmount.toFixed(1)}</div>`;
+    }
+
     // 构建卡片HTML
     card.innerHTML = `
         <div class="card-header">
             <div class="card-title">${deviceData.equipmentName}</div>
             <div class="card-badges">
                 <div class="card-type ${typeClass}">${deviceType}</div>
+                ${spikeBadgeHtml}
                 <div class="status-indicator ${deviceData.status === '1' || deviceData.status === 1 ? 'status-on' : 'status-off'}"></div>
             </div>
         </div>
@@ -1729,15 +1739,28 @@ function showDetailedInfo(deviceData) {
     // 宿管模式下直接使用 rows 数据（已是用电量），其他模式走 calculateDisplayData
     let dataTableHtml = '';
     if (isDormMode) {
-        // 宿管模式：显示用电量 + missingdata 标注
+        // 宿管模式：显示用电量 + missingdata 标注 + 激增标红
         const rows = deviceData.rows || [];
         // rows 是倒序的，先反转为正序显示
         const sortedRows = [...rows].reverse();
+
+        // 构建上升沿索引集合（转换为 sortedRows 的正序索引）
+        const spikeEdgeAscSet = new Set();
+        if (dormSpikeHours > 0 && dormSpikeData[deviceData.device_id]) {
+            const edgeIndices = dormSpikeData[deviceData.device_id].spikeEdgeIndices || [];
+            edgeIndices.forEach(descIdx => {
+                spikeEdgeAscSet.add(rows.length - 1 - descIdx);
+            });
+        }
+
         const tableHeader = '<th>时间</th><th>用电量 (kW/h)</th>';
-        const tableBody = sortedRows.map(row => {
+        const tableBody = sortedRows.map((row, ascIdx) => {
             const sourceTag = (row.source === 'interpolated' || row.source === 'missing')
                 ? ' <span class="missingdata-tag">missingdata</span>' : '';
-            return `<tr><td>${row.read_time}</td><td>${row.total_reading}${sourceTag}</td></tr>`;
+            const isSpike = spikeEdgeAscSet.has(ascIdx);
+            const spikeTag = isSpike ? ' <span class="spike-tag">↑</span>' : '';
+            const rowClass = isSpike ? ' class="spike-row"' : '';
+            return `<tr${rowClass}><td>${row.read_time}</td><td>${row.total_reading}${sourceTag}${spikeTag}</td></tr>`;
         }).join('');
         dataTableHtml = `
             <table class="data-table">
@@ -1991,6 +2014,11 @@ function initDormMode() {
             // 读取当前用量阈值
             const thresholdInput = document.getElementById('dorm-usage-threshold');
             dormUsageThreshold = thresholdInput && thresholdInput.value ? parseFloat(thresholdInput.value) : 0;
+            // 读取激增筛选参数
+            const spikeHoursInput = document.getElementById('dorm-spike-hours');
+            dormSpikeHours = spikeHoursInput && spikeHoursInput.value ? parseInt(spikeHoursInput.value) : 0;
+            const spikeThresholdInput = document.getElementById('dorm-spike-threshold');
+            dormSpikeThreshold = spikeThresholdInput && spikeThresholdInput.value ? parseFloat(spikeThresholdInput.value) : 0;
             
             loadDormBuildingData(currentBuilding, startDay, endDay);
         });
@@ -2015,6 +2043,26 @@ function initDormMode() {
         thresholdInput.addEventListener('change', function() {
             dormUsageThreshold = this.value ? parseFloat(this.value) : 0;
             // 如果有缓存数据，重新过滤
+            if (dormDataCache.devices) {
+                applyDormFilters();
+            }
+        });
+    }
+
+    // 绑定激增筛选输入
+    const spikeHoursInput = document.getElementById('dorm-spike-hours');
+    if (spikeHoursInput) {
+        spikeHoursInput.addEventListener('change', function() {
+            dormSpikeHours = this.value ? parseInt(this.value) : 0;
+            if (dormDataCache.devices) {
+                applyDormFilters();
+            }
+        });
+    }
+    const spikeThresholdInput = document.getElementById('dorm-spike-threshold');
+    if (spikeThresholdInput) {
+        spikeThresholdInput.addEventListener('change', function() {
+            dormSpikeThreshold = this.value ? parseFloat(this.value) : 0;
             if (dormDataCache.devices) {
                 applyDormFilters();
             }
@@ -2055,41 +2103,102 @@ async function loadDormBuildingData(building, startDay, endDay) {
 }
 
 // 应用宿管模式过滤器
+/**
+ * 检测设备用电量激增（连续上升沿）
+ * @param {Array} rows - 设备数据行（DESC 顺序，index 0 = 最新）
+ * @param {number} lookbackHours - 回看小时数
+ * @returns {{ spikeAmount: number, spikeEdgeIndices: number[] }}
+ */
+function detectSpike(rows, lookbackHours) {
+    if (!rows || rows.length < 2) return { spikeAmount: 0, spikeEdgeIndices: [] };
+
+    const windowSize = Math.min(lookbackHours, rows.length);
+    if (windowSize < 2) return { spikeAmount: 0, spikeEdgeIndices: [] };
+
+    // 从最新点(index 0)向后遍历，找连续上升沿
+    // rows[i] < rows[i-1] 说明更早的点值更小，即用电量在持续上升
+    const edgeIndices = [0];
+    for (let i = 1; i < windowSize; i++) {
+        const prev = parseFloat(rows[i - 1].total_reading) || 0;
+        const curr = parseFloat(rows[i].total_reading) || 0;
+        if (curr < prev) {
+            edgeIndices.push(i);
+        } else {
+            break;
+        }
+    }
+
+    // 上升沿至少需要 2 个点
+    if (edgeIndices.length < 2) return { spikeAmount: 0, spikeEdgeIndices: [] };
+
+    const latestVal = parseFloat(rows[0].total_reading) || 0;
+    const valleyVal = parseFloat(rows[edgeIndices[edgeIndices.length - 1]].total_reading) || 0;
+    const spikeAmount = Math.round((latestVal - valleyVal) * 10000) / 10000;
+
+    return { spikeAmount, spikeEdgeIndices: edgeIndices };
+}
+
 function applyDormFilters() {
     if (!dormDataCache.devices) return;
-    
+
     // 清空当前数据
     deviceDataCache = {};
     currentDeviceIds = [];
-    
+    dormSpikeData = {};
+
     let filteredCount = 0;
     let totalCount = dormDataCache.devices.length;
-    
+    const spikeActive = dormSpikeHours > 0;
+
     dormDataCache.devices.forEach(device => {
         // 过滤1：状态为关的设备
         if (dormFilterOffEnabled && device.status !== '1' && device.status !== 1) {
             return;
         }
-        
+
         // 过滤2：用量低于阈值
         if (dormUsageThreshold > 0 && (device.total_usage || 0) < dormUsageThreshold) {
             return;
         }
-        
+
+        // 激增检测
+        if (spikeActive) {
+            const result = detectSpike(device.rows, dormSpikeHours);
+            dormSpikeData[device.device_id] = result;
+            // 过滤3：激增量不超过阈值
+            if (result.spikeAmount <= dormSpikeThreshold) {
+                return;
+            }
+        }
+
         // 通过过滤，加入缓存
         deviceDataCache[device.device_id] = device;
         currentDeviceIds.push(device.device_id);
         filteredCount++;
     });
-    
+
+    // 激增模式下按激增量降序排列
+    if (spikeActive && filteredCount > 0) {
+        currentDeviceIds.sort((a, b) => {
+            const sa = dormSpikeData[a] ? dormSpikeData[a].spikeAmount : 0;
+            const sb = dormSpikeData[b] ? dormSpikeData[b].spikeAmount : 0;
+            return sb - sa;
+        });
+    }
+
     // 渲染卡片
     renderAllCards();
-    
+
     // 在顶部添加汇总信息
     const containerId = 'dorm-results-container';
     const container = document.getElementById(containerId);
     const summaryBar = document.createElement('div');
     summaryBar.className = 'dorm-summary-bar';
-    summaryBar.textContent = `${dormDataCache.building}栋 | ${dormDataCache.start_day} ~ ${dormDataCache.end_day} | 显示 ${filteredCount} / ${totalCount} 个设备`;
+    let summaryText = `${dormDataCache.building}栋 | ${dormDataCache.start_day} ~ ${dormDataCache.end_day} | 显示 ${filteredCount} / ${totalCount} 个设备`;
+    if (spikeActive) {
+        const spikeCount = Object.values(dormSpikeData).filter(d => d.spikeAmount > dormSpikeThreshold).length;
+        summaryText += ` | 激增筛选: 过去 ${dormSpikeHours} 小时, 检出 ${spikeCount} 个寝室`;
+    }
+    summaryBar.textContent = summaryText;
     container.insertBefore(summaryBar, container.firstChild);
 }

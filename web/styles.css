@@ -1344,6 +1344,75 @@ body.dark-mode .dorm-usage-filter input {
     border-color: #555;
 }
 
+/* 激增筛选输入 */
+.dorm-spike-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.dorm-spike-filter input {
+    width: 60px;
+    padding: 6px 8px;
+    border: 1px solid var(--custom-count-input-border);
+    border-radius: 5px;
+    font-size: 14px;
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+}
+
+body.dark-mode .dorm-spike-filter input {
+    background-color: #444;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+/* 激增标记 - 卡片头部红色药丸标签 */
+.spike-badge {
+    display: inline-block;
+    font-size: 11px;
+    background-color: #F44336;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: bold;
+    line-height: 1.4;
+}
+
+body.dark-mode .spike-badge {
+    background-color: #D32F2F;
+}
+
+/* 激增标红 - 详情表格上升沿行 */
+.spike-row td {
+    background-color: #FFEBEE;
+    color: #C62828;
+    font-weight: bold;
+}
+
+body.dark-mode .spike-row td {
+    background-color: #4a1c1c;
+    color: #ff8a80;
+}
+
+/* 激增标记 - 详情表格内红色小标签 */
+.spike-tag {
+    display: inline-block;
+    font-size: 11px;
+    background-color: #F44336;
+    color: white;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+body.dark-mode .spike-tag {
+    background-color: #D32F2F;
+    color: #fff;
+}
+
 /* 宿管日期选择器 */
 .dorm-date-selector {
     display: flex;

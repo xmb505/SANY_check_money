@@ -110,6 +110,13 @@
                         <input type="number" id="dorm-usage-threshold" step="0.1" min="0" placeholder="0">
                         <span>kW/h的寝室</span>
                     </div>
+                    <div class="dorm-spike-filter">
+                        <span>筛选过去</span>
+                        <input type="number" id="dorm-spike-hours" step="1" min="1" placeholder="0">
+                        <span>小时内用电量激增(></span>
+                        <input type="number" id="dorm-spike-threshold" step="0.1" min="0" placeholder="0.3">
+                        <span>kW/h)的寝室</span>
+                    </div>
                 </div>
                 <div class="dorm-date-selector">
                     <div class="date-inputs">
