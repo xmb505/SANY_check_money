@@ -15,8 +15,14 @@ from concurrent.futures import ThreadPoolExecutor
 import atexit
 from queue import Queue
 import re
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from contextlib import contextmanager
+
+# 导入 data_cleaner 清洗算法
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'data_cleaner'))
+from hourly_report import (build_24h_hours, build_slot_max, fill_missing_slots,
+                           compute_usage_series, smooth_zero_usage,
+                           get_anchor_max, fetch_raw_readings)
 
 # 读取配置文件
 config = configparser.ConfigParser()
@@ -349,6 +355,127 @@ class DataQuery:
             traceback.print_exc()
             return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
 
+    @staticmethod
+    def get_building_hourly_data(building, start_day, end_day):
+        """宿管模式：获取指定楼栋所有电表的小时级用电量数据"""
+        print(f"[INFO] 开始获取楼栋小时数据，楼栋: {building}, 日期: {start_day} ~ {end_day}")
+        try:
+            with DatabaseManager.get_connection() as conn:
+                with conn.cursor() as cursor:
+                    # 步骤1：查询该楼栋的所有电表设备
+                    device_sql = """
+                        SELECT id, equipmentName, installationSite, equipmentType,
+                               ratio, rate, acctId, status, updated_at
+                        FROM device
+                        WHERE equipmentType = 0 AND equipmentName LIKE %s
+                        ORDER BY equipmentName
+                    """
+                    pattern = f"学{building}栋%电表"
+                    print(f"[INFO] 查询楼栋设备，模式: {pattern}")
+                    cursor.execute(device_sql, (pattern,))
+                    device_rows = cursor.fetchall()
+                    print(f"[INFO] 查询到 {len(device_rows)} 个电表设备")
+
+                    if not device_rows:
+                        return {
+                            "code": 200, "building": building,
+                            "start_day": start_day, "end_day": end_day,
+                            "total_devices": 0, "devices": []
+                        }
+
+                    device_ids = [row[0] for row in device_rows]
+
+                # 步骤2：计算日期范围和查询时间范围
+                start_date = datetime.strptime(start_day, '%Y-%m-%d').date()
+                end_date = datetime.strptime(end_day, '%Y-%m-%d').date()
+
+                days = []
+                cur = start_date
+                while cur <= end_date:
+                    days.append(cur)
+                    cur += timedelta(days=1)
+
+                # 查询范围包含第一天前一小时(锚点) ~ 最后一天 23:59:59
+                query_start = datetime(start_date.year, start_date.month, start_date.day) - timedelta(hours=1)
+                query_end = datetime(end_date.year, end_date.month, end_date.day) + timedelta(hours=24) - timedelta(seconds=1)
+                print(f"[INFO] 原始数据查询范围: {query_start} ~ {query_end}")
+
+                # 步骤3：一次性查询所有原始读数
+                readings_map = fetch_raw_readings(conn, device_ids, query_start, query_end)
+
+                # 步骤4：对每个设备每天调用清洗算法
+                devices_result = []
+                for device_row in device_rows:
+                    did = device_row[0]
+                    raw = readings_map.get(did, [])
+
+                    all_rows = []
+                    total_usage = 0.0
+                    now = datetime.now()
+                    today = now.date()
+
+                    for day in days:
+                        hours = build_24h_hours(day)
+                        slot_vals = build_slot_max(raw, hours)
+                        slot_vals = fill_missing_slots(slot_vals)
+
+                        # 获取前一天23:00段锚点值
+                        anchor_start = datetime(day.year, day.month, day.day) - timedelta(hours=1)
+                        anchor_end = datetime(day.year, day.month, day.day)
+                        anchor_val = get_anchor_max(raw, anchor_start, anchor_end)
+
+                        usage_series = compute_usage_series(slot_vals, anchor_val)
+                        usage_series = smooth_zero_usage(usage_series)
+
+                        for i, (val, src) in enumerate(usage_series):
+                            # 跳过今天尚未到达的小时，避免图表出现未来的0值
+                            if day == today and hours[i].hour > now.hour:
+                                continue
+                            time_label = hours[i].strftime('%Y-%m-%d %H:%M')
+                            usage_val = val if val is not None else 0
+                            all_rows.append({
+                                "device_id": str(did),
+                                "read_time": time_label,
+                                "total_reading": str(round(usage_val, 4)),
+                                "remainingBalance": "0",
+                                "source": src
+                            })
+                            if val is not None:
+                                total_usage += val
+
+                    # 倒序排列（与现有 check 接口一致，最新在前）
+                    all_rows.reverse()
+
+                    devices_result.append({
+                        "equipmentName": device_row[1],
+                        "device_id": str(did),
+                        "installationSite": device_row[2],
+                        "equipmentType": str(device_row[3]),
+                        "ratio": str(device_row[4]),
+                        "rate": str(device_row[5]),
+                        "acctId": device_row[6],
+                        "status": str(device_row[7]),
+                        "updated_at": str(device_row[8]),
+                        "total": len(all_rows),
+                        "total_usage": round(total_usage, 4),
+                        "rows": all_rows,
+                        "code": 200
+                    })
+
+                print(f"[INFO] 楼栋小时数据构建完成，共 {len(devices_result)} 个设备")
+                return {
+                    "code": 200,
+                    "building": building,
+                    "start_day": start_day,
+                    "end_day": end_day,
+                    "total_devices": len(devices_result),
+                    "devices": devices_result
+                }
+        except Exception as e:
+            print(f"[ERROR] 获取楼栋小时数据时出错: {str(e)}")
+            traceback.print_exc()
+            return {"code": "500", "error": f"数据库查询错误: {str(e)}"}
+
 # 并行获取多个设备数据
 def get_multiple_device_data(device_ids, data_num):
     def fetch_device_data(device_id):
@@ -441,6 +568,35 @@ class RequestHandler(BaseHTTPRequestHandler):
                 else:
                     print("[WARN] 缺少必要参数 device_id, start_day 或 end_day")
                     response_data = {"code": "400", "error": "缺少必要参数 device_id, start_day 或 end_day"}
+            elif mode == 'check_hourly_building':
+                # 宿管模式：按楼栋查询小时级用电量
+                building = params.get('building', [None])[0]
+                start_day = params.get('start_day', [None])[0]
+                end_day = params.get('end_day', [None])[0]
+                print(f"[INFO] 处理宿管模式请求，楼栋: {building}, 日期: {start_day} ~ {end_day}")
+                if building and start_day and end_day:
+                    # 验证楼栋号白名单
+                    if not re.match(r'^(1|2|3|5|6|7|8|9|10)$', building):
+                        print(f"[WARN] 无效的楼栋号: {building}")
+                        response_data = {"code": "400", "error": "无效的楼栋号，有效值为1,2,3,5,6,7,8,9,10"}
+                    else:
+                        try:
+                            start_date = datetime.strptime(start_day, '%Y-%m-%d').date()
+                            end_date = datetime.strptime(end_day, '%Y-%m-%d').date()
+                            if start_date > end_date:
+                                print(f"[WARN] 开始日期 {start_day} 晚于结束日期 {end_day}")
+                                response_data = {"code": "400", "error": "开始日期不能晚于结束日期"}
+                            elif (end_date - start_date).days > 7:
+                                print(f"[WARN] 日期范围超过7天")
+                                response_data = {"code": "400", "error": "日期范围不能超过7天"}
+                            else:
+                                response_data = DataQuery.get_building_hourly_data(building, start_day, end_day)
+                        except ValueError:
+                            print(f"[WARN] 日期格式不正确，应为YYYY-MM-DD")
+                            response_data = {"code": "400", "error": "日期格式不正确，应为YYYY-MM-DD"}
+                else:
+                    print("[WARN] 缺少必要参数 building, start_day 或 end_day")
+                    response_data = {"code": "400", "error": "缺少必要参数 building, start_day 或 end_day"}
             elif mode == 'search':
                 # 搜索设备
                 keyword = params.get('key_word', [None])[0]

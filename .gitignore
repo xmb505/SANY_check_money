@@ -40,8 +40,10 @@ config/monitor_config.ini
 server/email_api.ini
 server/aokbalance_get.ini
 server/server.ini
-web/config.js
 server/email_checker.ini
+data_cleaner/config/mysql.ini
+data_cleaner/config/config.ini
+web/config.js
 
 # Also ignore backup/working files
 config/*~

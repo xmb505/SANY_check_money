@@ -9,6 +9,14 @@ let isVerificationSuccessful = false; // 跟踪验证是否成功
 let miniCharts = {}; // 用于存储迷你图表实例
 let currentChart = null; // 用于存储当前显示的图表实例
 
+// 宿管模式全局变量
+let currentBuilding = null;        // 当前选中楼栋号
+let dormDataCache = {};            // 宿管模式原始查询结果（全量）
+let isDormMode = false;            // 当前是否处于宿管模式
+let dormFilterOffEnabled = true;   // 是否过滤已关闭电表（默认 true）
+let dormUsageThreshold = 0;        // 用量过滤阈值（kW/h）
+let prevMode = null;               // 进入宿管模式前的 currentMode，切回时恢复
+
 // 获取API地址
 function getApiUrl(apiType = 'main') {
     if (apiType === 'email') {
@@ -169,6 +177,9 @@ document.addEventListener('DOMContentLoaded', function() {
             // 初始化图表模态框
             initModal();
             
+            // 初始化宿管模式
+            initDormMode();
+            
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
             cardsContainer.innerHTML = '<p>正在连接服务器,如果长时间没有反应,请联系管理员.</p>';
@@ -208,6 +219,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 初始化图表模态框
             initModal();
+            
+            // 初始化宿管模式
+            initDormMode();
             
             // 显示连接服务器提示
             const cardsContainer = document.getElementById('cards-container');
@@ -417,6 +431,30 @@ function showTabContent(tabName) {
     const targetPane = document.getElementById(`${tabName}-pane`);
     if (targetPane) {
         targetPane.classList.add('active');
+    }
+    
+    // 宿管模式切换逻辑
+    const cardsContainer = document.getElementById('cards-container');
+    const dormResultsContainer = document.getElementById('dorm-results-container');
+    const searchContainer = document.querySelector('.search-container');
+    
+    if (tabName === 'dorm-mode') {
+        // 进入宿管模式
+        prevMode = currentMode;
+        isDormMode = true;
+        currentMode = 'total';
+        if (cardsContainer) cardsContainer.style.display = 'none';
+        if (dormResultsContainer) dormResultsContainer.style.display = '';
+        if (searchContainer) searchContainer.style.display = 'none';
+    } else {
+        // 离开宿管模式
+        if (isDormMode && prevMode) {
+            currentMode = prevMode;
+        }
+        isDormMode = false;
+        if (cardsContainer) cardsContainer.style.display = '';
+        if (dormResultsContainer) dormResultsContainer.style.display = 'none';
+        if (searchContainer) searchContainer.style.display = '';
     }
 }
 
@@ -945,7 +983,9 @@ async function reloadDeviceData() {
 
 // 渲染所有卡片
 function renderAllCards() {
-    const cardsContainer = document.getElementById('cards-container');
+    // 宿管模式使用独立容器
+    const containerId = isDormMode ? 'dorm-results-container' : 'cards-container';
+    const cardsContainer = document.getElementById(containerId);
     cardsContainer.innerHTML = '';
     
     // 为每个设备创建卡片
@@ -971,6 +1011,10 @@ function createDeviceCard(deviceData) {
     // 计算显示的数据
     const displayData = calculateDisplayData(deviceData.rows);
     
+    // 宿管模式下不显示订阅按钮
+    const subscribeHtml = isDormMode ? '' :
+        `<button class="subscribe-btn" data-device-id="${deviceData.device_id}" data-equipment-type="${deviceData.equipmentType}">✉️</button>`;
+    
     // 构建卡片HTML
     card.innerHTML = `
         <div class="card-header">
@@ -985,7 +1029,7 @@ function createDeviceCard(deviceData) {
         </div>
         <div class="card-buttons">
             <button class="toggle-details-btn" data-device-id="${deviceData.device_id}">查看详细信息</button>
-            <button class="subscribe-btn" data-device-id="${deviceData.device_id}" data-equipment-type="${deviceData.equipmentType}">✉️</button>
+            ${subscribeHtml}
         </div>
     `;
     
@@ -996,12 +1040,15 @@ function createDeviceCard(deviceData) {
         showDetailedInfo(deviceData);
     });
     
-    // 添加订阅邮件按钮事件监听器
-    const subscribeBtn = card.querySelector('.subscribe-btn');
-    
-    subscribeBtn.addEventListener('click', function() {
-        showSubscribeModal(deviceData);
-    });
+    // 添加订阅邮件按钮事件监听器（非宿管模式）
+    if (!isDormMode) {
+        const subscribeBtn = card.querySelector('.subscribe-btn');
+        if (subscribeBtn) {
+            subscribeBtn.addEventListener('click', function() {
+                showSubscribeModal(deviceData);
+            });
+        }
+    }
     
     // 初始时创建迷你图表,并添加点击事件
     setTimeout(() => {
@@ -1679,7 +1726,40 @@ function showDetailedInfo(deviceData) {
     const isElectric = deviceData.equipmentType === '0' || deviceData.equipmentType === 0;
     const deviceType = isElectric ? '电表' : '水表';
     
-    const displayData = calculateDisplayData(deviceData.rows);
+    // 宿管模式下直接使用 rows 数据（已是用电量），其他模式走 calculateDisplayData
+    let dataTableHtml = '';
+    if (isDormMode) {
+        // 宿管模式：显示用电量 + missingdata 标注
+        const rows = deviceData.rows || [];
+        // rows 是倒序的，先反转为正序显示
+        const sortedRows = [...rows].reverse();
+        const tableHeader = '<th>时间</th><th>用电量 (kW/h)</th>';
+        const tableBody = sortedRows.map(row => {
+            const sourceTag = (row.source === 'interpolated' || row.source === 'missing')
+                ? ' <span class="missingdata-tag">missingdata</span>' : '';
+            return `<tr><td>${row.read_time}</td><td>${row.total_reading}${sourceTag}</td></tr>`;
+        }).join('');
+        dataTableHtml = `
+            <table class="data-table">
+                <thead><tr>${tableHeader}</tr></thead>
+                <tbody>${tableBody}</tbody>
+            </table>`;
+    } else {
+        const displayData = calculateDisplayData(deviceData.rows);
+        const tableHeader = `<th>时间</th><th>${currentMode === 'usage' ? '用量' : currentMode === 'cost' ? '金额变化' : '总读数'}</th>`;
+        const tableBody = displayData.map(item => `
+            <tr><td>${item.time}</td><td>${item.value}</td></tr>
+        `).join('');
+        dataTableHtml = `
+            <table class="data-table">
+                <thead><tr>${tableHeader}</tr></thead>
+                <tbody>${tableBody}</tbody>
+            </table>`;
+    }
+    
+    // 宿管模式下额外显示总用电量
+    const totalUsageHtml = (isDormMode && deviceData.total_usage !== undefined)
+        ? `<div class="detail-info-item"><span class="detail-info-label">总用电量:</span><span>${deviceData.total_usage} kW/h</span></div>` : '';
     
     detailContent.innerHTML = `
         <div class="detail-info">
@@ -1715,25 +1795,11 @@ function showDetailedInfo(deviceData) {
                 <span class="detail-info-label">最后更新:</span>
                 <span>${deviceData.updated_at}</span>
             </div>
+            ${totalUsageHtml}
         </div>
         <div class="detail-data">
             <h3>数据记录</h3>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>时间</th>
-                        <th>${currentMode === 'usage' ? '用量' : currentMode === 'cost' ? '金额变化' : '总读数'}</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${displayData.map(item => `
-                        <tr>
-                            <td>${item.time}</td>
-                            <td>${item.value}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+            ${dataTableHtml}
         </div>
     `;
     
@@ -1823,6 +1889,7 @@ function prepareChartData(rows) {
 
 // 获取图表标签
 function getChartLabel() {
+    if (isDormMode) return '用电量 (kW/h)';
     switch (currentMode) {
         case 'usage': return '用量';
         case 'cost': return '消耗金额';
@@ -1879,4 +1946,150 @@ async function searchDevices(keyword) {
         console.error('搜索设备时出错:', error);
         alert("搜索设备时出错,请检查网络连接.");
     }
+}
+
+// ========== 宿管模式 ==========
+
+// 初始化宿管模式
+function initDormMode() {
+    // 设置默认日期（昨天到今天）
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    const dormStartDate = document.getElementById('dorm-start-date');
+    const dormEndDate = document.getElementById('dorm-end-date');
+    if (dormStartDate) dormStartDate.value = yesterday.toISOString().split('T')[0];
+    if (dormEndDate) dormEndDate.value = today.toISOString().split('T')[0];
+    
+    // 绑定楼栋按钮点击
+    const buildingBtns = document.querySelectorAll('.building-btn');
+    buildingBtns.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // 移除所有按钮高亮
+            buildingBtns.forEach(b => b.classList.remove('active'));
+            // 高亮当前按钮
+            this.classList.add('active');
+            currentBuilding = this.getAttribute('data-building');
+        });
+    });
+    
+    // 绑定查询按钮
+    const queryBtn = document.getElementById('dorm-query-btn');
+    if (queryBtn) {
+        queryBtn.addEventListener('click', function() {
+            if (!currentBuilding) {
+                alert('请先选择楼栋');
+                return;
+            }
+            const startDay = document.getElementById('dorm-start-date').value;
+            const endDay = document.getElementById('dorm-end-date').value;
+            if (!startDay || !endDay) {
+                alert('请选择日期范围');
+                return;
+            }
+            // 读取当前用量阈值
+            const thresholdInput = document.getElementById('dorm-usage-threshold');
+            dormUsageThreshold = thresholdInput && thresholdInput.value ? parseFloat(thresholdInput.value) : 0;
+            
+            loadDormBuildingData(currentBuilding, startDay, endDay);
+        });
+    }
+    
+    // 绑定状态过滤按钮切换
+    const filterOffBtn = document.getElementById('dorm-filter-off-btn');
+    if (filterOffBtn) {
+        filterOffBtn.addEventListener('click', function() {
+            dormFilterOffEnabled = !dormFilterOffEnabled;
+            this.classList.toggle('active', dormFilterOffEnabled);
+            // 如果有缓存数据，重新过滤
+            if (dormDataCache.devices) {
+                applyDormFilters();
+            }
+        });
+    }
+    
+    // 绑定用量阈值输入
+    const thresholdInput = document.getElementById('dorm-usage-threshold');
+    if (thresholdInput) {
+        thresholdInput.addEventListener('change', function() {
+            dormUsageThreshold = this.value ? parseFloat(this.value) : 0;
+            // 如果有缓存数据，重新过滤
+            if (dormDataCache.devices) {
+                applyDormFilters();
+            }
+        });
+    }
+}
+
+// 加载楼栋小时级用电量数据
+async function loadDormBuildingData(building, startDay, endDay) {
+    const dormResultsContainer = document.getElementById('dorm-results-container');
+    dormResultsContainer.innerHTML = '<p>正在加载数据，请稍候...</p>';
+    
+    try {
+        const apiUrl = getApiUrl('main');
+        const url = `${apiUrl}/?mode=check_hourly_building&building=${encodeURIComponent(building)}&start_day=${encodeURIComponent(startDay)}&end_day=${encodeURIComponent(endDay)}`;
+        const response = await fetchWithTimeout(url);
+        const data = await response.json();
+        
+        if (data.code === 200) {
+            // 全量缓存
+            dormDataCache = data;
+            
+            if (data.total_devices === 0) {
+                dormResultsContainer.innerHTML = '<p>该楼栋没有找到电表设备</p>';
+                return;
+            }
+            
+            // 应用过滤并渲染
+            applyDormFilters();
+        } else {
+            console.error('获取楼栋数据失败:', data);
+            dormResultsContainer.innerHTML = `<p>查询失败: ${data.error || '未知错误'}</p>`;
+        }
+    } catch (error) {
+        console.error('加载楼栋数据时出错:', error);
+        dormResultsContainer.innerHTML = '<p>加载数据失败，请检查网络连接</p>';
+    }
+}
+
+// 应用宿管模式过滤器
+function applyDormFilters() {
+    if (!dormDataCache.devices) return;
+    
+    // 清空当前数据
+    deviceDataCache = {};
+    currentDeviceIds = [];
+    
+    let filteredCount = 0;
+    let totalCount = dormDataCache.devices.length;
+    
+    dormDataCache.devices.forEach(device => {
+        // 过滤1：状态为关的设备
+        if (dormFilterOffEnabled && device.status !== '1' && device.status !== 1) {
+            return;
+        }
+        
+        // 过滤2：用量低于阈值
+        if (dormUsageThreshold > 0 && (device.total_usage || 0) < dormUsageThreshold) {
+            return;
+        }
+        
+        // 通过过滤，加入缓存
+        deviceDataCache[device.device_id] = device;
+        currentDeviceIds.push(device.device_id);
+        filteredCount++;
+    });
+    
+    // 渲染卡片
+    renderAllCards();
+    
+    // 在顶部添加汇总信息
+    const containerId = 'dorm-results-container';
+    const container = document.getElementById(containerId);
+    const summaryBar = document.createElement('div');
+    summaryBar.className = 'dorm-summary-bar';
+    summaryBar.textContent = `${dormDataCache.building}栋 | ${dormDataCache.start_day} ~ ${dormDataCache.end_day} | 显示 ${filteredCount} / ${totalCount} 个设备`;
+    container.insertBefore(summaryBar, container.firstChild);
 }

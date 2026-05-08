@@ -21,6 +21,7 @@
                 <div class="tabs">
                     <div class="tab active" data-tab="data-count">数据量</div>
                     <div class="tab" data-tab="data-mode">数据解析</div>
+                    <div class="tab" data-tab="dorm-mode">宿管模式</div>
                 </div>
             </div>
             
@@ -85,12 +86,53 @@
                     <button class="mode-btn" data-mode="balance">余额模式</button>
                 </div>
             </div>
+            
+            <!-- 宿管模式选项卡内容 -->
+            <div class="tab-pane" id="dorm-mode-pane">
+                <div class="building-selector">
+                    <label>选择楼栋:</label>
+                    <div class="building-buttons">
+                        <button class="building-btn" data-building="1">1栋</button>
+                        <button class="building-btn" data-building="2">2栋</button>
+                        <button class="building-btn" data-building="3">3栋</button>
+                        <button class="building-btn" data-building="5">5栋</button>
+                        <button class="building-btn" data-building="6">6栋</button>
+                        <button class="building-btn" data-building="7">7栋</button>
+                        <button class="building-btn" data-building="8">8栋</button>
+                        <button class="building-btn" data-building="9">9栋</button>
+                        <button class="building-btn" data-building="10">10栋</button>
+                    </div>
+                </div>
+                <div class="dorm-filters">
+                    <button class="dorm-filter-btn active" id="dorm-filter-off-btn">隐藏已关闭电表</button>
+                    <div class="dorm-usage-filter">
+                        <span>过滤掉用电量小于</span>
+                        <input type="number" id="dorm-usage-threshold" step="0.1" min="0" placeholder="0">
+                        <span>kW/h的寝室</span>
+                    </div>
+                </div>
+                <div class="dorm-date-selector">
+                    <div class="date-inputs">
+                        <div class="date-input-group">
+                            <input type="date" id="dorm-start-date">
+                        </div>
+                        <span class="date-range-separator">-</span>
+                        <div class="date-input-group">
+                            <input type="date" id="dorm-end-date">
+                        </div>
+                    </div>
+                    <button id="dorm-query-btn">查询</button>
+                </div>
+            </div>
         </div>
         
         <!-- 主要内容区域 -->
         <div class="main-content">
             <div class="cards-container" id="cards-container">
                 <!-- 卡片将在这里动态生成 -->
+            </div>
+            <div class="dorm-results-container" id="dorm-results-container" style="display:none;">
+                <!-- 宿管模式卡片将在这里动态生成 -->
             </div>
         </div>
         

@@ -1226,3 +1226,203 @@ body.dark-mode .form-group input:focus {
 body.dark-mode #email-balance {
     color: #64B5F6; /* 暗色模式下的蓝色 */
 }
+
+/* ========== 宿管模式样式 ========== */
+
+/* 楼栋选择器 */
+.building-selector {
+    margin-bottom: 15px;
+}
+
+.building-selector label {
+    font-weight: bold;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.building-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.building-btn {
+    padding: 8px 15px;
+    background-color: var(--count-btn-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.building-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.building-btn:hover {
+    background-color: #d5d5d5;
+}
+
+body.dark-mode .building-btn {
+    background-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .building-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+body.dark-mode .building-btn:hover {
+    background-color: #555;
+}
+
+/* 过滤控件区 */
+.dorm-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+    margin-bottom: 15px;
+}
+
+.dorm-filter-btn {
+    padding: 8px 15px;
+    background-color: var(--count-btn-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.dorm-filter-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+.dorm-filter-btn:hover {
+    background-color: #d5d5d5;
+}
+
+body.dark-mode .dorm-filter-btn {
+    background-color: #444;
+    color: #f0f0f0;
+}
+
+body.dark-mode .dorm-filter-btn.active {
+    background-color: #2196F3;
+    color: white;
+}
+
+body.dark-mode .dorm-filter-btn:hover {
+    background-color: #555;
+}
+
+.dorm-usage-filter {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+}
+
+.dorm-usage-filter input {
+    width: 70px;
+    padding: 6px 8px;
+    border: 1px solid var(--custom-count-input-border);
+    border-radius: 5px;
+    font-size: 14px;
+    background-color: var(--form-input-bg);
+    color: var(--text-color);
+}
+
+body.dark-mode .dorm-usage-filter input {
+    background-color: #444;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+/* 宿管日期选择器 */
+.dorm-date-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    align-items: center;
+}
+
+#dorm-query-btn {
+    padding: 8px 20px;
+    background-color: var(--set-custom-count-bg);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+#dorm-query-btn:hover {
+    background-color: var(--set-custom-count-hover-bg);
+}
+
+/* 宿管结果容器 */
+.dorm-results-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* 汇总信息栏 */
+.dorm-summary-bar {
+    grid-column: 1 / -1;
+    background-color: #E3F2FD;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 14px;
+    color: #1565C0;
+}
+
+body.dark-mode .dorm-summary-bar {
+    background-color: #1a3a5c;
+    color: #90CAF9;
+}
+
+/* 详细信息中的 missingdata 标签 */
+.missingdata-tag {
+    display: inline-block;
+    font-size: 11px;
+    background-color: #e0e0e0;
+    color: #757575;
+    padding: 1px 6px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+}
+
+body.dark-mode .missingdata-tag {
+    background-color: #555;
+    color: #bbb;
+}
+
+/* 响应式：宿管模式 */
+@media (max-width: 768px) {
+    .building-buttons {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+    }
+
+    .dorm-filters {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dorm-date-selector {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .dorm-results-container {
+        grid-template-columns: 1fr;
+    }
+}
