@@ -2,8 +2,9 @@
 
 # 读取配置文件并执行命令的守护进程脚本
 
-# 配置文件路径
-CONFIG_FILE="./config/daemon.ini"
+# 配置文件路径（相对于脚本自身位置）
+SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
+CONFIG_FILE="$SCRIPT_DIR/config/daemon.ini"
 
 # 检查配置文件是否存在
 if [ ! -f "$CONFIG_FILE" ]; then
@@ -30,20 +31,20 @@ echo "----------------------------------------"
 # 无限循环执行命令
 while true; do
     echo "$(date): 执行命令: $COMMAND"
-    
+
     # 执行配置文件中的命令
     eval "$COMMAND"
-    
+
     # 检查命令执行结果
     if [ $? -eq 0 ]; then
         echo "$(date): 命令执行成功"
     else
         echo "$(date): 命令执行失败"
     fi
-    
+
     echo "$(date): 等待 $REC_TIME 秒后再次执行..."
     echo "----------------------------------------"
-    
+
     # 等待指定的时间
     sleep "$REC_TIME"
 done

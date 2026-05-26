@@ -5,7 +5,7 @@ import sys
 import os
 
 _root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_root, '..', 'server'))
+sys.path.insert(0, os.path.join(_root, '../..', 'server'))
 
 import json
 import configparser
@@ -111,7 +111,7 @@ def send_mail(config, subject, content):
 
 def main():
     if len(sys.argv) != 3:
-        print("用法: ./debug_utils/monitor_daemon.py <账号> <密码>")
+        print("用法: ./debug_utils/monitor_daemon/monitor_daemon.py <账号> <密码>")
         sys.exit(1)
 
     phone_num = sys.argv[1]

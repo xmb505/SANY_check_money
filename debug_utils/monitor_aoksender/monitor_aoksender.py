@@ -5,7 +5,7 @@ import sys
 import os
 
 _root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_root, '..', 'server'))
+sys.path.insert(0, os.path.join(_root, '../..', 'server'))
 
 import json
 import configparser
@@ -71,7 +71,7 @@ def send_aoksend_mail(config, device_data):
 
 def main():
     if len(sys.argv) != 3:
-        print("用法: ./debug_utils/monitor_aoksender.py <账号> <密码>")
+        print("用法: ./debug_utils/monitor_aoksender/monitor_aoksender.py <账号> <密码>")
         sys.exit(1)
 
     phone_num = sys.argv[1]

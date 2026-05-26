@@ -59,21 +59,31 @@ sany_check_money/
 │   ├── login.py              # 用户登录脚本
 │   ├── get_data.py           # 水电费数据查询脚本
 │   ├── check_data.py         # 分页设备数据查询脚本
-│   ├── data2sql.py           # 数据库存储脚本
-│   ├── mail_sender.py        # SMTP邮件发送脚本
-│   ├── monitor_daemon.py     # SMTP监控守护进程
-│   ├── monitor_aoksender.py  # Aoksend监控守护进程
-│   └── aoksend-api-cli.py    # Aoksend邮件API命令行工具
-├── daemon.sh                 # 守护进程脚本
+│   ├── data2sql/             # 数据库存储脚本
+│   │   ├── data2sql.py
+│   │   └── config/
+│   │       └── example_mysql.ini
+│   ├── mail_sender/          # SMTP邮件发送脚本
+│   │   ├── mail_sender.py
+│   │   └── config/
+│   │       ├── example_mail_setting.ini
+│   │       └── mail_texter.txt
+│   ├── monitor_daemon/       # SMTP监控守护进程
+│   │   ├── monitor_daemon.py
+│   │   └── config/
+│   │       ├── example_monitor_config.ini
+│   │       ├── example_mail_setting.ini
+│   │       └── mail_texter.txt
+│   └── monitor_aoksender/    # Aoksend监控守护进程
+│       ├── monitor_aoksender.py
+│       └── config/
+│           └── example_aoksender.ini
+├── daemon/                   # Shell守护进程
+│   ├── daemon.sh
+│   └── config/
+│       └── example_daemon.ini
 ├── import.sql               # 数据库表结构导入文件
 ├── IFLOW.md                 # 项目开发过程和技术细节说明
-├── config/                  # 配置文件目录
-│   ├── mail_setting.ini     # SMTP邮件配置
-│   ├── aoksender.ini        # Aoksend API配置
-│   ├── daemon.ini           # 守护进程配置
-│   ├── monitor_config.ini   # 监控配置
-│   ├── mail_texter.txt      # 邮件模板
-│   └── mysql.ini            # MySQL数据库配置
 ├── server/                  # Web后端服务
 │   ├── server.py            # RESTful API服务
 │   ├── email_api.py         # 邮件订阅API
@@ -83,7 +93,8 @@ sany_check_money/
     ├── index.html           # 主页面
     ├── main.js              # 主逻辑
     ├── styles.css           # 样式文件
-    └── config.js            # 前端配置
+    ├── example_config.js    # 前端配置模板
+    └── config.js            # (gitignored) 运行时配置
 ```
 
 ## 快速开始
@@ -107,7 +118,7 @@ mysql -h [服务器地址] -u [用户名] -p < import.sql
 配置数据库连接信息：
 
 ```ini
-# config/mysql.ini
+# debug_utils/data2sql/config/mysql.ini
 [mysql]
 mysql_server = your_mysql_host
 mysql_port = 3306
@@ -135,7 +146,7 @@ python3 debug_utils/get_data.py <appUserId> <roleId>
 将数据存储到数据库：
 
 ```bash
-./debug_utils/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]
+./debug_utils/data2sql/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]
 ```
 
 ### 5. 邮件预警
@@ -144,10 +155,10 @@ python3 debug_utils/get_data.py <appUserId> <roleId>
 
 ```bash
 # SMTP方式
-./debug_utils/monitor_daemon.py <账号> <密码>
+./debug_utils/monitor_daemon/monitor_daemon.py <账号> <密码>
 
 # Aoksend API方式
-./debug_utils/monitor_aoksender.py <账号> <密码>
+./debug_utils/monitor_aoksender/monitor_aoksender.py <账号> <密码>
 ```
 
 ### 6. Web服务
@@ -167,12 +178,13 @@ python3 server.py
 
 ### 配置文件列表
 
-- `config/mysql.ini`：数据库连接配置
-- `config/mail_setting.ini`：SMTP邮件发送配置
-- `config/aoksender.ini`：Aoksend API配置
-- `config/daemon.ini`：守护进程配置
-- `config/monitor_config.ini`：数据监控配置
-- `config/mail_texter.txt`：邮件模板文件
+- `debug_utils/data2sql/config/mysql.ini`：数据库连接配置
+- `debug_utils/mail_sender/config/mail_setting.ini`：SMTP邮件发送配置
+- `debug_utils/monitor_aoksender/config/aoksender.ini`：Aoksend API配置
+- `debug_utils/monitor_daemon/config/monitor_config.ini`：数据监控配置
+- `debug_utils/mail_sender/config/mail_texter.txt`：邮件模板文件
+- `debug_utils/monitor_daemon/config/mail_texter.txt`：邮件模板文件（副本）
+- `daemon/config/daemon.ini`：守护进程配置
 - `server/server.ini`：Web后端API服务配置
 - `server/email_api.ini`：邮件订阅API配置
 - `server/aokbalance_get.ini`：Aoksend余额查询服务配置
@@ -182,10 +194,14 @@ python3 server.py
 
 1. 复制示例配置文件并重命名为实际使用的文件名：
    ```bash
-   cp config/example_mysql.ini config/mysql.ini
-   cp config/example_aoksender.ini config/aoksender.ini
-   cp server/example_server.ini server/server.ini
-   cp server/example_email_api.ini server/email_api.ini
+   cp debug_utils/data2sql/config/example_mysql.ini debug_utils/data2sql/config/mysql.ini
+   cp debug_utils/monitor_aoksender/config/example_aoksender.ini debug_utils/monitor_aoksender/config/aoksender.ini
+   cp debug_utils/mail_sender/config/example_mail_setting.ini debug_utils/mail_sender/config/mail_setting.ini
+   cp debug_utils/monitor_daemon/config/example_monitor_config.ini debug_utils/monitor_daemon/config/monitor_config.ini
+   cp debug_utils/monitor_daemon/config/example_mail_setting.ini debug_utils/monitor_daemon/config/mail_setting.ini
+   cp daemon/config/example_daemon.ini daemon/config/daemon.ini
+   cp server/config_examples/example_server.ini server/server.ini
+   cp server/config_examples/example_email_api.ini server/email_api.ini
    cp web/example_config.js web/config.js
    ```
 

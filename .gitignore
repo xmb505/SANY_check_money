@@ -32,11 +32,11 @@ MANIFEST
 Thumbs.db
 
 # Configuration files with sensitive data - now using example files
-config/mysql.ini
-config/aoksender.ini
-config/daemon.ini
-config/mail_setting.ini
-config/monitor_config.ini
+debug_utils/*/config/mysql.ini
+debug_utils/*/config/aoksender.ini
+debug_utils/*/config/mail_setting.ini
+debug_utils/*/config/monitor_config.ini
+daemon/config/daemon.ini
 server/email_api.ini
 server/aokbalance_get.ini
 server/server.ini
@@ -46,7 +46,6 @@ data_cleaner/config/config.ini
 web/config.js
 
 # Also ignore backup/working files
-config/*~
 server/*~
 
 # Log files

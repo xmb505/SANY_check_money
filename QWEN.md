@@ -25,19 +25,29 @@
 │   ├── login.py             # 学校网站登录（含 MD5 签名）
 │   ├── get_data.py          # 单次查询水电费数据
 │   ├── check_data.py        # 分页查询所有设备数据
-│   ├── data2sql.py          # 将数据存入 MySQL（防止重复）
-│   ├── mail_sender.py       # SMTP 邮件发送
-│   ├── monitor_daemon.py    # SMTP 方式监控守护进程
-│   ├── monitor_aoksender.py # Aoksend 方式监控守护进程
-│   └── aoksend-api-cli.py   # Aoksend 邮件 API CLI 工具
-├── daemon.sh                # Shell 守护进程（循环执行自定义命令）
-├── config/                  # 根层配置（均为 gitignored，参考 example_* 文件）
-│   ├── example_mysql.ini
-│   ├── example_aoksender.ini
-│   ├── example_daemon.ini
-│   ├── example_mail_setting.ini
-│   ├── example_monitor_config.ini
-│   └── mail_texter.txt
+│   ├── data2sql/            # 采集入库
+│   │   ├── data2sql.py
+│   │   └── config/
+│   │       └── example_mysql.ini
+│   ├── mail_sender/         # SMTP 邮件发送
+│   │   ├── mail_sender.py
+│   │   └── config/
+│   │       ├── example_mail_setting.ini
+│   │       └── mail_texter.txt
+│   ├── monitor_daemon/      # SMTP 方式监控守护进程
+│   │   ├── monitor_daemon.py
+│   │   └── config/
+│   │       ├── example_monitor_config.ini
+│   │       ├── example_mail_setting.ini
+│   │       └── mail_texter.txt
+│   └── monitor_aoksender/   # Aoksend 方式监控守护进程
+│       ├── monitor_aoksender.py
+│       └── config/
+│           └── example_aoksender.ini
+├── daemon/                  # Shell 守护进程
+│   ├── daemon.sh
+│   └── config/
+│       └── example_daemon.ini
 ├── data_cleaner/            # 数据清洗模块
 │   ├── hourly_report.py     # 核心清洗算法
 │   └── config/              # 清洗模块配置（example_config.ini, example_mysql.ini）
@@ -60,8 +70,7 @@
 │   │   ├── data_table.sql
 │   │   └── email_table.sql
 │   ├── IFLOW.md
-│   ├── IFLOW_debug.md
-│   └── aoksend-api-cli.md
+│   └── IFLOW_debug.md
 └── web/                     # 前端静态文件
     ├── index.html           # 主页面（三个标签页）
     ├── main.js              # 前端核心逻辑（2200+ 行）
@@ -98,23 +107,23 @@ python3 server/aokbalance_get.py      # Aoksend 余额查询 → 端口 8082
 python3 debug_utils/login.py <手机号> <密码>                # 获取 appUserId 和 roleId
 python3 debug_utils/get_data.py <appUserId> <roleId>        # 查询设备电量数据
 python3 debug_utils/check_data.py <appUserId> <roleId> [pageNum] [pageSize]  # 分页查询
-python3 debug_utils/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]    # 采集入库
+python3 debug_utils/data2sql/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]    # 采集入库
 ```
 
 ### 邮件监控启动
 
 ```bash
-# SMTP 方式（依赖 config/mail_setting.ini）
-python3 debug_utils/monitor_daemon.py <账号> <密码>
+# SMTP 方式（依赖 monitor_daemon/config/mail_setting.ini）
+python3 debug_utils/monitor_daemon/monitor_daemon.py <账号> <密码>
 
-# Aoksend API 方式（依赖 config/aoksender.ini）
-python3 debug_utils/monitor_aoksender.py <账号> <密码>
+# Aoksend API 方式（依赖 monitor_aoksender/config/aoksender.ini）
+python3 debug_utils/monitor_aoksender/monitor_aoksender.py <账号> <密码>
 ```
 
 ### Shell 守护进程
 
 ```bash
-bash daemon.sh   # 根据 config/daemon.ini 配置循环执行命令
+bash daemon/daemon.sh   # 根据 daemon/config/daemon.ini 配置循环执行命令
 ```
 
 ### 语法检查
@@ -210,10 +219,10 @@ MySQL + `pymysql`，连接池大小为 30（3× 线程池大小）。`server/lib
 | `server.py` | `server/server.ini` | `[mysql]`, `[server]`, `[config]` |
 | `email_api.py` | `server/email_api.ini` | `[server]`, `[email]`, `[mysql]`, `[aoksender]` |
 | `aokbalance_get.py` | `server/aokbalance_get.ini` | `[aok]`, `[server]` |
-| `monitor_aoksender.py` | `config/aoksender.ini` | `[aoksender]`, `[monitor]` |
-| `monitor_daemon.py` | `config/monitor_config.ini` | `[data]` |
-| `mail_sender.py` | `config/mail_setting.ini` | `[smtp]` |
-| `daemon.sh` | `config/daemon.ini` | `rec_time`, `command` |
+| `monitor_aoksender.py` | `debug_utils/monitor_aoksender/config/aoksender.ini` | `[aoksender]`, `[monitor]` |
+| `monitor_daemon.py` | `debug_utils/monitor_daemon/config/monitor_config.ini` | `[data]` |
+| `mail_sender.py` | `debug_utils/mail_sender/config/mail_setting.ini` | `[smtp]` |
+| `daemon.sh` | `daemon/config/daemon.ini` | `rec_time`, `command` |
 | `data_cleaner/hourly_report.py` | `data_cleaner/config/config.ini` | `[filter]`, `[align]`, `[output]`, `[filter_output]` |
 | 前端 | `web/config.js` | API 地址、默认模式、UI 配置 |
 
@@ -221,7 +230,8 @@ MySQL + `pymysql`，连接池大小为 30（3× 线程池大小）。`server/lib
 
 ```bash
 cp server/config_examples/example_server.ini server/server.ini
-cp config/example_mysql.ini config/mysql.ini
+cp debug_utils/data2sql/config/example_mysql.ini debug_utils/data2sql/config/mysql.ini
+# 其他 debug_utils 配置类似，详见各子目录 config/
 cp web/example_config.js web/config.js
 # 然后编辑真实凭据
 ```

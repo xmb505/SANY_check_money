@@ -8,8 +8,7 @@
       "Bash(do *)",
       "Bash(done)",
       "Bash(git *)",
-      "Bash(rm *)",
-      "Bash(cp *)"
+      "Bash(rm *)"
     ]
   },
   "$version": 4

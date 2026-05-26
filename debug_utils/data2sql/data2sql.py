@@ -5,7 +5,7 @@ import sys
 import os
 
 _root = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(_root, '..', 'server'))
+sys.path.insert(0, os.path.join(_root, '../..', 'server'))
 
 import json
 import configparser
@@ -132,7 +132,7 @@ def insert_reading_data(connection, device_data):
 
 def main():
     if len(sys.argv) < 3 or len(sys.argv) > 5:
-        print("用法: ./debug_utils/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]")
+        print("用法: ./debug_utils/data2sql/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]")
         sys.exit(1)
 
     app_user_id = sys.argv[1]
