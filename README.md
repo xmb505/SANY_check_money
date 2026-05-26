@@ -83,7 +83,7 @@ sany_check_money/
 │   └── config/
 │       └── example_daemon.ini
 ├── import.sql               # 数据库表结构导入文件
-├── IFLOW.md                 # 项目开发过程和技术细节说明
+├── IFLOW_old.md             # 项目开发过程（历史文档，不再维护）
 ├── server/                  # Web后端服务
 │   ├── server.py            # RESTful API服务
 │   ├── email_api.py         # 邮件订阅API
