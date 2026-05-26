@@ -638,71 +638,44 @@ def request_unsubscribe(email, device_id, equipment_type):
 
 def _send_email_via_aoksend(email, template_data, template_id, template_type):
     """通过Aoksend发送邮件的通用函数"""
-    import subprocess
-    import json
-    
     # 检查邮件发送频率限制
     emails_sent_today = count_emails_sent_today(email)
     if emails_sent_today >= EMAIL_DAILY_LIMIT:
         print(f"[WARN] 邮件发送频率超限，邮箱 {email} 今日已发送 {emails_sent_today} 封邮件")
         return False
-    
-    def _send_email():
-        try:
-            # 从配置文件读取Aoksend配置
-            config = configparser.ConfigParser()
-            config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
-            
-            aoksend_config = {
-                'api_url': config.get('aoksender', 'server', fallback='https://www.aoksend.com/index/api/send_email'),
-                'app_key': config.get('aoksender', 'app_key'),
-                'template_id': template_id,
-                'reply_to': config.get('aoksender', 'reply_to', fallback=None),
-                'alias': config.get('aoksender', 'alias', fallback='新毛云'),
-                'attachment': config.get('aoksender', 'attachment', fallback=None)
-            }
-            
-            if not aoksend_config['api_url'] or aoksend_config['api_url'].strip() == '':
-                aoksend_config['api_url'] = 'https://www.aoksend.com/index/api/send_email'
-            
-            # 构建命令行参数
-            cmd = [
-                sys.executable, 'aoksend-api-cli.py',
-                '--api-url', aoksend_config['api_url'],
-                '--app-key', aoksend_config['app_key'],
-                '--template-id', aoksend_config['template_id'],
-                '--to', email
-            ]
-            
-            if aoksend_config['reply_to']:
-                cmd.extend(['--reply-to', aoksend_config['reply_to']])
-            
-            if aoksend_config['alias']:
-                cmd.extend(['--alias', aoksend_config['alias']])
-            
-            cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False, default=str)])
-            
-            if aoksend_config['attachment']:
-                cmd.extend(['--attachment', aoksend_config['attachment']])
-            
-            # 执行命令
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
-            
-            if result.returncode == 0:
-                print(f"[INFO] {template_type}邮件发送成功到 {email}")
-                # 记录邮件发送
-                record_email_sent(email)
-                return True
-            else:
-                print(f"[ERROR] {template_type}邮件发送失败: {result.stderr}")
-                return False
-        except Exception as e:
-            print(f"[ERROR] 发送邮件时出错: {str(e)}")
+
+    try:
+        # 从配置文件读取Aoksend配置
+        from libs.aoksender import send_email as _aoksend_send
+
+        config = configparser.ConfigParser()
+        config.read(os.path.join(os.path.dirname(__file__), 'email_api.ini'))
+
+        api_url = config.get('aoksender', 'server', fallback='https://www.aoksend.com/index/api/send_email')
+        if not api_url or api_url.strip() == '':
+            api_url = 'https://www.aoksend.com/index/api/send_email'
+
+        result = _aoksend_send(
+            api_url=api_url,
+            app_key=config.get('aoksender', 'app_key'),
+            template_id=template_id,
+            to=email,
+            reply_to=config.get('aoksender', 'reply_to', fallback=None),
+            alias=config.get('aoksender', 'alias', fallback='新毛云'),
+            data=json.dumps(template_data, ensure_ascii=False, default=str),
+            attachment=config.get('aoksender', 'attachment', fallback=None)
+        )
+
+        if result.get('code') == 200:
+            print(f"[INFO] {template_type}邮件发送成功到 {email}")
+            record_email_sent(email)
+            return True
+        else:
+            print(f"[ERROR] {template_type}邮件发送失败: {result.get('message', '未知错误')}")
             return False
-    
-    # 使用线程池并发处理邮件发送
-    future = executor.submit(_send_email)
-    return future.result()
+    except Exception as e:
+        print(f"[ERROR] 发送邮件时出错: {str(e)}")
+        return False
 
 def send_verification_email(email, verifi_code, device_info):
     """发送验证码邮件"""

@@ -5,7 +5,6 @@ import json
 import configparser
 import pymysql
 import time
-import subprocess
 import sys
 import os
 import traceback
@@ -256,6 +255,8 @@ def get_device_latest_data(device_id):
 def send_alert_email(email, device_info, latest_data, alarm_num):
     """发送预警邮件"""
     try:
+        from libs.aoksender import send_email as _aoksend_send
+
         # 构造模板数据，处理Decimal类型
         template_data = {
             CHECKER_TITLE_FIELD: '注意注意！设备数值低于预警阀值！',
@@ -265,36 +266,23 @@ def send_alert_email(email, device_info, latest_data, alarm_num):
             CHECKER_DEVICE_STATU_FIELD: latest_data['equipmentStatus'],
             CHECKER_DEVICE_LATEST_READ_FIELD: float(latest_data['total_reading']) if latest_data['total_reading'] is not None and isinstance(latest_data['total_reading'], Decimal) else latest_data['total_reading']
         }
-        
-        # 构建命令行参数
-        cmd = [
-            sys.executable, 'aoksend-api-cli.py',
-            '--api-url', AOKSEND_API_URL,
-            '--app-key', AOKSEND_APP_KEY,
-            '--template-id', CHECKER_TEMPLATE_ID,
-            '--to', email
-        ]
-        
-        if AOKSEND_REPLY_TO:
-            cmd.extend(['--reply-to', AOKSEND_REPLY_TO])
-        
-        if AOKSEND_ALIAS:
-            cmd.extend(['--alias', AOKSEND_ALIAS])
-        
-        # 使用default=str来处理不能序列化的对象
-        cmd.extend(['--data', json.dumps(template_data, ensure_ascii=False, default=str)])
-        
-        if AOKSEND_ATTACHMENT:
-            cmd.extend(['--attachment', AOKSEND_ATTACHMENT])
-        
-        # 执行命令
-        result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.path.dirname(__file__))
-        
-        if result.returncode == 0:
+
+        result = _aoksend_send(
+            api_url=AOKSEND_API_URL,
+            app_key=AOKSEND_APP_KEY,
+            template_id=CHECKER_TEMPLATE_ID,
+            to=email,
+            reply_to=AOKSEND_REPLY_TO if AOKSEND_REPLY_TO else None,
+            alias=AOKSEND_ALIAS,
+            data=json.dumps(template_data, ensure_ascii=False, default=str),
+            attachment=AOKSEND_ATTACHMENT if AOKSEND_ATTACHMENT else None
+        )
+
+        if result.get('code') == 200:
             print(f"[INFO] 预警邮件发送成功到 {email}")
             return True
         else:
-            print(f"[ERROR] 预警邮件发送失败: {result.stderr}")
+            print(f"[ERROR] 预警邮件发送失败: {result.get('message', '未知错误')}")
             return False
     except Exception as e:
         print(f"[ERROR] 发送预警邮件时出错: {str(e)}")

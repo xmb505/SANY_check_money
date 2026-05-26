@@ -55,15 +55,16 @@
 
 ```
 sany_check_money/
-├── login.py                 # 用户登录脚本
-├── get_data.py              # 水电费数据查询脚本
-├── check_data.py            # 分页设备数据查询脚本
-├── data2sql.py              # 数据库存储脚本
-├── daemon.sh                # 守护进程脚本
-├── mail_sender.py           # SMTP邮件发送脚本
-├── monitor_daemon.py        # SMTP监控守护进程
-├── aoksend-api-cli.py       # Aoksend邮件API命令行工具
-├── monitor_aoksender.py     # Aoksend监控守护进程
+├── debug_utils/              # 开发工具脚本
+│   ├── login.py              # 用户登录脚本
+│   ├── get_data.py           # 水电费数据查询脚本
+│   ├── check_data.py         # 分页设备数据查询脚本
+│   ├── data2sql.py           # 数据库存储脚本
+│   ├── mail_sender.py        # SMTP邮件发送脚本
+│   ├── monitor_daemon.py     # SMTP监控守护进程
+│   ├── monitor_aoksender.py  # Aoksend监控守护进程
+│   └── aoksend-api-cli.py    # Aoksend邮件API命令行工具
+├── daemon.sh                 # 守护进程脚本
 ├── import.sql               # 数据库表结构导入文件
 ├── IFLOW.md                 # 项目开发过程和技术细节说明
 ├── config/                  # 配置文件目录
@@ -120,13 +121,13 @@ db_schema = sany_check_money
 登录获取用户信息：
 
 ```bash
-python3 login.py <手机号> <密码>
+python3 debug_utils/login.py <手机号> <密码>
 ```
 
 查询水电费数据：
 
 ```bash
-python3 get_data.py <appUserId> <roleId>
+python3 debug_utils/get_data.py <appUserId> <roleId>
 ```
 
 ### 4. 数据存储
@@ -134,7 +135,7 @@ python3 get_data.py <appUserId> <roleId>
 将数据存储到数据库：
 
 ```bash
-./data2sql.py <appUserId> <roleId> [pageNum] [pageSize]
+./debug_utils/data2sql.py <appUserId> <roleId> [pageNum] [pageSize]
 ```
 
 ### 5. 邮件预警
@@ -143,10 +144,10 @@ python3 get_data.py <appUserId> <roleId>
 
 ```bash
 # SMTP方式
-./monitor_daemon.py <账号> <密码>
+./debug_utils/monitor_daemon.py <账号> <密码>
 
 # Aoksend API方式
-./monitor_aoksender.py <账号> <密码>
+./debug_utils/monitor_aoksender.py <账号> <密码>
 ```
 
 ### 6. Web服务
